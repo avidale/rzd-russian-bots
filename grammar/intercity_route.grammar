@@ -1,0 +1,45 @@
+root:
+    [$Route? $From $To]
+    [$Route? ($WeakFrom $WeakTo)]
+    [$Route $From? $To]
+    [$Route $From $To?]
+
+slots:
+    from:
+        source: $WeakFrom
+    to:
+        source: $WeakTo
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$From:
+    $FromPrep $WeakFrom
+$FromPrep:
+    от
+    из
+    с
+$To:
+    %lemma
+    $ToPrep $WeakTo
+$ToPrep:
+    до
+    в
+    на
+    к
+$WeakFrom:
+    $Poi
+$WeakTo:
+    $Poi
+$Poi:
+    %lemma
+    $YANDEX.GEO
+$Route:
+    ($Find|$Ticket)+
+$Find:
+    %lemma
+    найди | покажи
+$Ticket:
+    %lemma
+    поезд | билет
