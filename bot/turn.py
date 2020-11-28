@@ -6,3 +6,16 @@ class RzdTurn(DialogTurn):
 
 
 csc = Cascade()
+
+
+class SLOTS:
+    FROM_TEXT = 'from_text'
+    TO_TEXT = 'to_text'
+    WHEN_TEXT = 'when_text'
+
+
+TRANSIENT_SLOTS = {
+    SLOTS.FROM_TEXT,
+    SLOTS.TO_TEXT,
+    SLOTS.WHEN_TEXT,
+}
