@@ -15,7 +15,13 @@ def is_first_session(turn: RzdTurn) -> bool:
 
 @csc.add_handler(priority=1000, checker=is_first_session)
 def greeting_handler(turn: RzdTurn):
-    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поезд.' \
+    # Очищаем некоторые данные о пользователе, например, заполненные слоты из предыдущей сессии
+    user_slots_to_delete = ["from_text", "to_text", "when_text", "car_type", "seat_type", "quantity"]
+    for slot_name in user_slots_to_delete:
+        if slot_name in turn.user_object:
+            del turn.user_object[slot_name]
+
+    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поиск.' \
                          'Чтобы выйти из навыка, скажите "Хватит".'
     turn.suggests.append('Помощь')
 

@@ -1,0 +1,14 @@
+root:
+    $Quantity
+
+slots:
+    quantity:
+        source: $Quantity
+        type: YANDEX.NUMBER
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$Quantity:
+    $YANDEX.NUMBER

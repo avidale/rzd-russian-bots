@@ -24,12 +24,13 @@ class RzdDialogManager(BaseDialogManager):
         super(RzdDialogManager, self).__init__(**kwargs)
         self.cascade = cascade or csc
 
-        logger.debug('loading intents..')
-
-        self.intents = load_intents_with_replacement(
-            intents_fn='config/intents.yaml',
-            expressions_fn='config/expressions.yaml',
-        )
+        logger.debug('loading intents..')        
+        self.intents = {}
+        # self.intents = load_intents_with_replacement(
+        #     intents_fn='config/intents.yaml',
+        #     expressions_fn='config/expressions.yaml',
+        # )
+        
         if os.getenv('PRECOMPILE_REGEX'):
             compile_intents_re(self.intents)
         logger.debug('loading world..')
