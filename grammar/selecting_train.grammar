@@ -1,12 +1,14 @@
 root:
-    [$Want? $CarType $QuantityAndSeatType]
-    [$Want? $QuantityAndSeatType? $CarType]
-    [$Want? $QuantityAndSeatType $CarType?]
+    [$Want? $CarTypeExpr $QuantityAndSeatType]
+    [$Want? $QuantityAndSeatType? $CarTypeExpr]
+    [$Want? $QuantityAndSeatType $CarTypeExpr?]
 
 slots:
     car_type:
+        type: CarType
         source: $WeakCarType
     seat_type:
+        type: SeatType
         source: $WeakSeatType
     quantity:
         source: $Quantity
@@ -16,29 +18,27 @@ filler:
     алиса
     $YANDEX.NONSENSE
 
-$CarType:
+$CarTypeExpr:
     $CarTypePrep? [$WeakCarType $CarTypeAnchor?]
 
 $CarTypePrep:
     в
 
 $WeakCarType:
-    %lemma
-    плацкартный | купейный | св | сидячий | купе | плацкарт
+    $CarType
 
 $CarTypeAnchor:
     %lemma
     вагон
 
 $QuantityAndSeatType:
-    $Quantity? $SeatType
+    $Quantity? $SeatTypeExpr
 
-$SeatType:
+$SeatTypeExpr:
     [$WeakSeatType? $SeatTypeAnchor]
 
 $WeakSeatType:
-    %lemma
-    верхний | нижний | сидячий
+    $SeatType
 
 $SeatTypeAnchor:
     %lemma

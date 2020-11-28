@@ -1,4 +1,4 @@
-entity PlaceType:
+entity SeatType:
     values:
         upper:
             %lemma
