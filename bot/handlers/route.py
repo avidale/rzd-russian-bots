@@ -165,7 +165,7 @@ def expect_departure_place(turn: RzdTurn):
 @csc.add_handler(priority=6, stages=['expect_after_slots_filled'])
 def expect_after_slots_filled(turn: RzdTurn):
     print(f"intents: {turn.intents}")
-    turn.response_text = 'Найдено несколько поездов. Какое тип вагона и места вы хотите?'
+    turn.response_text = 'Найдено несколько поездов. Какого тип вагона и места вы хотите?'
     turn.stage = 'expect_all_train_data'
     turn.suggests.extend(['Один билет в плацкартный вагон', 'Два билета в купе'])
 
