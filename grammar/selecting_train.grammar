@@ -35,7 +35,7 @@ $QuantityAndSeatType:
     $Quantity? $SeatTypeExpr
 
 $SeatTypeExpr:
-    [$WeakSeatType? $SeatTypeAnchor]
+    [$WeakSeatType? $SeatTypeAnchor?]
 
 $WeakSeatType:
     $SeatType
