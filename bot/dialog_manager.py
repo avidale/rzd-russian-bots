@@ -28,7 +28,8 @@ class RzdDialogManager(BaseDialogManager):
             ctx=ctx,
             text=fast_normalize(ctx.message_text),
             intents=intents,
-            forms=forms
+            forms=forms,
+            user_object=ctx.user_object,
         )
         handler_name = self.cascade(turn)
         print(f"Handler name: {handler_name}")

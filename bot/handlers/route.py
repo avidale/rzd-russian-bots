@@ -54,14 +54,14 @@ def intercity_route(turn: RzdTurn):
     when_text = forms.get('when', None)
 
     if from_text:
-        turn.ctx.user_object['from_text'] = from_text
+        turn.user_object['from_text'] = from_text
     if to_text:
-        turn.ctx.user_object['to_text'] = to_text
+        turn.user_object['to_text'] = to_text
     if when_text:
-        turn.ctx.user_object['when_text'] = when_text
+        turn.user_object['when_text'] = when_text
 
-    turn.ctx.user_object["from_text"] = "from_text"
-    print(f"intercity_route turn: {turn.ctx.user_object['from_text']}")
+    turn.user_object["from_text"] = "from_text"
+    print(f"intercity_route turn: {turn.user_object['from_text']}")
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
 
@@ -82,7 +82,7 @@ def expect_departure_time(turn: RzdTurn):
         turn.suggests.extend(['Завтра', 'Сегодня'])
     else:
         # Получили недостающий слот со временем. Заполняем данные
-        turn.ctx.user_object['when_text'] = when_text
+        turn.user_object['when_text'] = when_text
 
 
 @csc.add_handler(priority=8, stages=['expect_destination_place'], intents=['slots_filling'])
@@ -102,7 +102,7 @@ def expect_destination_place(turn: RzdTurn):
         turn.suggests.extend(['Москва', 'Петербург'])
     else:
         # Получили недостающий слот со временем. Заполняем данные
-        turn.ctx.user_object['to_text'] = to_text
+        turn.user_object['to_text'] = to_text
 
 
 @csc.add_handler(priority=7, stages=['expect_departure_place'], intents=['slots_filling'])
@@ -122,4 +122,4 @@ def expect_departure_place(turn: RzdTurn):
         turn.suggests.extend(['Москва', 'Петербург'])
     else:
         # Получили недостающий слот со временем. Заполняем данные
-        turn.ctx.user_object['from_text'] = from_text
+        turn.user_object['from_text'] = from_text
