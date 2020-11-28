@@ -1,5 +1,6 @@
 import tgalice
 
+from api.rzd_basic import suggest_first_station, find_route, init_find_route, request_find_route_result
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.morph import with_number
@@ -15,6 +16,14 @@ def check_slots_and_chose_state(turn: RzdTurn):
     if from_text and to_text and when_text:
         turn.response_text = f'Ищу билеты {from_text} {to_text} {when_text}. Все правильно?'
         next_stage = 'expect_after_slots_filled'
+
+        from_id = turn.user_object.get('from_id', None)
+        to_id = turn.user_object.get('to_id', None)
+        date_to = turn.user_object.get('when_text', None)
+        params, cookies = init_find_route(from_id, to_id, date_to)
+        turn.user_object['find_route_params'] = params
+        turn.user_object['find_route_cookies'] = cookies
+
         # На данном этапе полностью получены все слоты
         turn.suggests.extend(['Да', 'Нет'])
 
@@ -45,47 +54,31 @@ def check_slots_and_chose_state(turn: RzdTurn):
     return turn
 
 
-def get_trains():
+def get_trains(turn: RzdTurn):
     """Формирование результата, полученного через API."""
-    api_response = [
-            {
-                "seat_type": "Плацкарт",
-                "from": "",
-                "to": "",
-                "from_station": "",
-                "to_station": "",
-                "number": "",
-                "time_start": "2020-12-01 16:30",
-                "time_end": "2020-12-04 19:30",
-                "duration": "30:80",
-                "cost": "3500"
-            },
-            {
-                "seat_type": "Купе",
-                "time_start": "2020-12-01 16:30",
-                "time_end": "2020-12-04 19:30",
-                "duration": "10800",
-                "cost": "5000"
-            }
-    ]
-    return api_response
+    params = turn.user_object.get('find_route_params', None)
+    cookies = turn.user_object.get('find_route_cookies', None)
+
+    return request_find_route_result(params, cookies, format_result=True)
 
 
 @csc.add_handler(priority=30, stages=['expect_after_slots_filled'], intents=['yes', 'no'])
 def expect_after_slots_filled(turn: RzdTurn):
+    print("expect_after_slots_filled handler")
     if 'yes' in turn.intents:
         # Дождались положительного ответа от пользователя после формирования полного запроса
         # Достаем результат
-        api_response = get_trains()
-        turn.user_object['trains'] = api_response
+        trains_list = get_trains(turn)
+        turn.user_object['trains'] = trains_list
 
-        for train in api_response["trains"]:
+        print("Trains")
+        for train in trains_list:
             print(train)
 
         print(f"intents: {turn.intents}")
-        turn.response_text = 'Найдено несколько поездов. Какого тип вагона и места вы хотите?'
+        turn.response_text = 'Найдено несколько поездов. Какое место хотите?'
         turn.stage = 'expect_all_train_data'
-        turn.suggests.extend(['Один билет в плацкартный вагон', 'Два билета в купе'])
+        turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
 
         # turn.response_text = f'Я нашла вам несколько вариантов.'
         # turn.stage = 'expect_ticket_decision'
@@ -107,8 +100,10 @@ def intercity_route(turn: RzdTurn):
 
     if from_text:
         turn.user_object['from_text'] = from_text
+        turn.user_object['from_id'] = suggest_first_station(from_text)
     if to_text:
         turn.user_object['to_text'] = to_text
+        turn.user_object['to_id'] = suggest_first_station(to_text)
     if when_text:
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
@@ -156,6 +151,7 @@ def expect_destination_place(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['to_text'] = to_text
+        turn.user_object['to_id'] = suggest_first_station(to_text)
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
 
@@ -178,12 +174,9 @@ def expect_departure_place(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['from_text'] = from_text
+        turn.user_object['from_id'] = suggest_first_station(from_text)
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
-
-
-
-
 
 
 def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
@@ -197,25 +190,25 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
     print(f"seat_type: {seat_type}")
     print(f"quantity: {quantity}")
 
-    if car_type and seat_type and quantity:
-        turn.response_text = f'Покупаем {with_number("билет", quantity)} в {car_type} вагон, {seat_type} мест. ' \
+    if car_type and seat_type:
+        turn.response_text = f'Покупаем билет в {car_type} вагон. ' \
                              f'Все правильно?'
         turn.stage = 'expect_after_selecting_train_slots_filled'
         turn.suggests.extend(['Да', 'Нет'])
     if not car_type:
         turn.response_text = f'Какой хотите тип вагона?'
         turn.stage = 'expect_car_type'
-        turn.suggests.extend(['Плацкартный', 'Купейный', 'СВ', 'Сидячий'])
-    elif car_type != 'св' and car_type != 'сидячий' and not seat_type:
+        turn.suggests.extend(['Плацкартный', 'Купейный', 'СВ', 'Сидячий', 'Люкс'])
+    elif car_type in ['econom', 'sleeping'] and not seat_type:
         # Для плацкартного и купейного вагона уточняем тип места
-        turn.response_text = 'Хотите верхнее место?'
+        turn.response_text = 'Верхнее или нижнее место?'
         turn.stage = 'expect_seat_type'
         turn.suggests.extend(['Верхнее', 'Нижнее'])
-    elif not quantity:
-        # Уточняем количество билетов
-        turn.response_text = 'Сколько билетов вы хотите купить?'
-        turn.stage = 'expect_quantity'
-        turn.suggests.extend(['Один', 'Два', 'Три'])
+    # elif not quantity:
+    #     # Уточняем количество билетов
+    #     turn.response_text = 'Сколько билетов вы хотите купить?'
+    #     turn.stage = 'expect_quantity'
+    #     turn.suggests.extend(['Один', 'Два', 'Три'])
 
     print(f"next stage is: {turn.stage}")
 
@@ -260,6 +253,7 @@ def expect_car_type(turn: RzdTurn):
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['car_type'] = car_type
         turn = expect_slots_and_choose_state_for_selecting_train(turn)
+        print(f"turn.response_text: {turn.response_text}")
 
 
 @csc.add_handler(priority=6, stages=['expect_seat_type'], intents=['seat_type_slot_filling'])
@@ -273,7 +267,7 @@ def expect_seat_type(turn: RzdTurn):
     seat_type = forms.get('seat_type', None)
     car_type = turn.user_object.get('car_type', None)
 
-    if car_type == 'св' or car_type == 'сидячий':
+    if car_type == 'first_class' or car_type == 'seating':
         turn.user_object['seat_type'] = 'нет'
     elif not seat_type:
         # Для плацкартного и купейного вагона уточняем тип места
@@ -285,6 +279,7 @@ def expect_seat_type(turn: RzdTurn):
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['seat_type'] = seat_type
         turn = expect_slots_and_choose_state_for_selecting_train(turn)
+        print(f"turn.response_text: {turn.response_text}")
 
 
 @csc.add_handler(priority=6, stages=['expect_quantity'], intents=['tickets_quantity_slot_filling'])
@@ -306,3 +301,4 @@ def expect_quantity(turn: RzdTurn):
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['seat_type'] = quantity
         turn = expect_slots_and_choose_state_for_selecting_train(turn)
+        print(f"turn.response_text: {turn.response_text}")

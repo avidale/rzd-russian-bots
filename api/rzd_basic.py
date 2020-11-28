@@ -1,3 +1,5 @@
+import http
+
 import requests
 import time
 
@@ -10,7 +12,7 @@ def suggest_stations(text, threshold=0.5, min_n=3, max_n=10, s_coef=1e-3, l_coef
     где name - название станции, code - её код, score - скор точности совпадения.
     """
     text2 = text.upper()
-    suggests = requests.get(
+    response = requests.get(
         'https://m.rzd.ru/suggester',
         params=dict(
             stationNamePart=text2,
@@ -18,7 +20,11 @@ def suggest_stations(text, threshold=0.5, min_n=3, max_n=10, s_coef=1e-3, l_coef
             compactMode='y',
             lat=1,
         ),
-    ).json()
+    )
+    if response.headers.get('content-type').startswith('application/json'):
+        suggests = response.json()
+    else:
+        return None
     top = Counter()
     id2station = {}
     query = set(text2.split())
@@ -38,6 +44,24 @@ def suggest_stations(text, threshold=0.5, min_n=3, max_n=10, s_coef=1e-3, l_coef
         if v > threshold or i < min_n
     ]
     return final
+
+
+def suggest_first_station(text):
+    """Функция, которая выбирает первую станцию из предложенных."""
+    # TODO временный костыль c предлогами
+    lower_text = text.lower()
+    for prep in ["от", "из", "с", "до", "в", "на", "к"]:
+        if lower_text.startswith(f"{prep} "):
+            lower_text = lower_text.split(" ", maxsplit=1)[1]
+            break
+    # TODO временный костыль c питером
+    if lower_text == 'питер':
+        lower_text = 'Санкт-Петербург'
+    stations = suggest_stations(lower_text)
+    if stations:
+        return stations[0][0]['c']
+
+    return None
 
 
 def init_find_route(from_code, to_code, date_to, date_back=None):
@@ -61,7 +85,7 @@ def init_find_route(from_code, to_code, date_to, date_back=None):
     prev_result = requests.get('https://pass.rzd.ru/timetable/public/ru', params=params)
     params['rid'] = prev_result.json().get('rid', None)
     cookies = prev_result.cookies
-    return params, cookies
+    return params, cookies.get_dict()
 
 
 def request_find_route_result(params, cookies, timeout=0.01, max_attempts=10, timeout_inc=0.01, format_result=False):
@@ -70,7 +94,7 @@ def request_find_route_result(params, cookies, timeout=0.01, max_attempts=10, ti
 
     for i in range(max_attempts):
         result = requests.get('https://pass.rzd.ru/timetable/public/ru', params=params, cookies=cookies).json()
-        code = result['result']
+        code = result.get('result', None)
         if code == 'OK':
             break
         time.sleep(timeout + timeout_inc * i)
@@ -92,8 +116,8 @@ def find_route(from_code, to_code, date_to, date_back=None, timeout=0.01, max_at
 
 
 def format_route_list(routes_dict):
-    """ Преобрзование словаря маршрутов в обговоренный формат."""
-    if not routes_dict or routes_dict['result'] != 'OK':
+    """ Преобрзование словаря маршрутов в обговоренный формат списка поездов."""
+    if not routes_dict or routes_dict.get('result', None) != 'OK':
         return []
     result_trains = []
 
@@ -147,25 +171,26 @@ def format_route_list(routes_dict):
 
 
 if __name__ == "__main__":
-    moscow = suggest_stations("Москва")[0][0]['c']
-    piter = suggest_stations("Санкт-Петербург")[0][0]['c']
+    moscow = suggest_first_station("Москва")
+    piter = suggest_first_station("Санкт-Петербург")
     date_to = "01.12.2020"
     print(moscow, piter)
     print(find_route(moscow, piter, date_to, format_result=True))
 
-    vlad = suggest_stations("Владивасток")[0][0]['c']
-    irkutsk = suggest_stations("Иркутск")[0][0]['c']
-    print(suggest_stations("Владивасток"))
-    print(suggest_stations("Иркутск"))
+    vlad = suggest_first_station("Владивасток")
+    irkutsk = suggest_first_station("Иркутск")
+    print(suggest_first_station("Владивасток"))
+    print(suggest_first_station("Иркутск"))
     date_to = "01.12.2020"
     print(vlad, irkutsk)
     print(find_route(vlad, piter, irkutsk, format_result=True))
 
-    orenburg = suggest_stations("Оренбург")[0][0]['c']
-    irkutsk = suggest_stations("Иркутск")[0][0]['c']
+    orenburg = suggest_first_station("Оренбург")
+    irkutsk = suggest_first_station("Иркутск")
     date_to = "01.12.2020"
     print(orenburg, moscow)
     print(find_route(orenburg, moscow, date_to, format_result=True))
+
 
 
 
