@@ -7,7 +7,7 @@ from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.morph import with_number
 
 
-def filter_trains(trains: list, rzd_car_type: str):
+def filter_trains_by_rzd_car_type(trains: list, rzd_car_type: str):
     """Фильтруем список предложений поездов по типу вагона."""
     return [train for train in trains if train['seat_type'] == rzd_car_type]
 
@@ -112,24 +112,34 @@ def expect_departure_time_tag(turn: RzdTurn):
     forms = turn.forms['time_tags']
     time_tags = forms.keys()
 
-    trains = turn.user_object['trains']
-    trains = filter_trains_by_time_tags(trains, time_tags)
+    source_trains = turn.user_object['trains']
+    filtered_trains = filter_trains_by_time_tags(source_trains, time_tags)
 
-    print(f"Filtered trains by time tags: {trains}")
+    print(f"Filtered trains by time tags: {filtered_trains}")
 
-    if len(trains) == 0:
+    if len(filtered_trains) == 0:
         # Если на нужное время дня нет билетов то говорим об этом и предлагаем соазу выбирать тип вагона и места
         turn.response_text = 'К сожалению, на выбранное время дня нет билетов. ' \
                              'Давайте выберем место в найденных билетах?'
         turn.stage = 'expect_all_train_data'
-        turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
+
+        rzd_car_types = get_human_readable_existing_car_types(source_trains)
+        if rzd_car_types:
+            turn.suggests.extend(create_suggestions_for_car_types(rzd_car_types))
+        else:
+            turn.suggests.extend(['Верхнее место в плацкарте', 'Нижнее место в купе'])
     else:
         # Теперь в юзерстейте лежат отфильтрованные по времени билеты
-        turn.user_object['trains'] = trains
+        turn.user_object['trains'] = filtered_trains
         # Переходим к выбору типа вагона и мест
         turn.response_text = 'Какое место хотите?'
         turn.stage = 'expect_all_train_data'
-        turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
+
+        rzd_car_types = get_human_readable_existing_car_types(filtered_trains)
+        if rzd_car_types:
+            turn.suggests.extend(create_suggestions_for_car_types(rzd_car_types))
+        else:
+            turn.suggests.extend(['Верхнее место в плацкарте', 'Нижнее место в купе'])
 
 
 @csc.add_handler(priority=10, intents=['intercity_route'])
@@ -226,11 +236,13 @@ def expect_departure_place(turn: RzdTurn):
 
 
 def get_human_readable_existing_car_types(trains: list):
+    """Получение списка человеко-читаемых типов вагонов."""
     existing_car_types = set(train['seat_type'] for train in trains)
     return [car_type.capitalize() for car_type in existing_car_types]
 
 
 def car_type_to_rzd_type(car_type):
+    """Перевод типа вагона из грамматики в тип вагона в RZD API."""
     mapping = {
         "seating": "Сидячий",
         "first_class": "СВ",
@@ -241,7 +253,24 @@ def car_type_to_rzd_type(car_type):
     return mapping[car_type]
 
 
+def create_suggestions_for_car_types(rzd_car_types):
+    """Формирования списка предложения по списку типов доступных поездов."""
+    suggestions = []
+    if "Купе" in rzd_car_types:
+        suggestions.append("Нижнее место в купе")
+    if "Плацкартный" in rzd_car_types:
+        suggestions.append("Верхнее место в плацкарте")
+    if "Сидячий" in rzd_car_types:
+        suggestions.append("Сидячее место")
+    if "СВ" in rzd_car_types:
+        suggestions.append("Св")
+    if "Люкс" in rzd_car_types:
+        suggestions.append("Люкс")
+    return suggestions
+
+
 def car_type_to_human_str(car_type: str, form=0):
+    """Перевод типа вагона в человеко-читаемый вид с учетом склонения."""
     plural_mapping = {
         "seating": "сидячие",
         "first_class": "СВ",
@@ -255,6 +284,13 @@ def car_type_to_human_str(car_type: str, form=0):
         "econom": "плацкартными",
         "sleeping": "купейными",
         "luxury": "люксовыми"
+    }
+    plural_mapping3 = {
+        "seating": "сидячих",
+        "first_class": "СВ",
+        "econom": "плацкартных",
+        "sleeping": "купейных",
+        "luxury": "люксовых"
     }
 
     singular_mapping = {
@@ -278,10 +314,13 @@ def car_type_to_human_str(car_type: str, form=0):
         return plural_mapping2[car_type]
     elif form == 3:
         return singular_mapping2[car_type]
+    elif form == 4:
+        return plural_mapping2[car_type]
     return singular_mapping[car_type]
 
 
 def seat_type_to_human_str(seat_type: str, form=0):
+    """Перевод типа места в человеко-читаемый вид с учетом склонения."""
     plural_mapping = {
         "upper": "верхние",
         "bottom": "нижние"
@@ -313,10 +352,11 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
     print(f"car_type: {car_type}")
     print(f"seat_type: {seat_type}")
 
-    if car_type and seat_type:
-        filtered_trains = filter_trains(trains, car_type_to_rzd_type(car_type))
+    if car_type and (seat_type or car_type not in ['econom', 'sleeping']):
+        filtered_trains = filter_trains_by_rzd_car_type(trains, car_type_to_rzd_type(car_type))
         if not filtered_trains:
-            turn.response_text = f'К сожалению нет {car_type_to_human_str(car_type, form=2)} вагонов. ' \
+            turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами ' \
+                                 f'на указанное время. ' \
                                  f'Давайте выберем вагон другого типа?'
             turn.suggests.extend(get_human_readable_existing_car_types(trains))
             turn.user_object["car_type"] = None
@@ -394,7 +434,7 @@ def expect_car_type(turn: RzdTurn):
     elif trains and not car_type_to_human_str(car_type).capitalize() in get_human_readable_existing_car_types(trains):
         # Гооворим, что вагона заданного типа нет
         turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами ' \
-                             f'на указанное время!' \
+                             f'на указанное время! ' \
                              f'Выберем другой тип вагона?'
         # Оставляем тот же стейт
         turn.stage = 'expect_car_type'
