@@ -2,7 +2,7 @@ import tgalice
 
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
-
+from utils.morph import with_number
 
 def check_slots_and_chose_state(turn: RzdTurn):
     """Первый этап. Проверяем что заполнены все слоты. Если что-то не заполнено то выбираем какой заполнить."""
@@ -55,7 +55,8 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
     print(f"quantity: {quantity}")
 
     if car_type and seat_type and quantity:
-        turn.response_text = f'Покупаем {quantity} билет в {car_type} вагон, {seat_type} мест. Все правильно?'
+        turn.response_text = f'Покупаем {with_number("билет", quantity)} в {car_type} вагон, {seat_type} мест. ' \
+                             f'Все правильно?'
         turn.stage = 'expect_after_selecting_train_slots_filled'
         turn.suggests.extend(['Да', 'Нет'])
     if not car_type:
@@ -169,7 +170,7 @@ def expect_after_slots_filled(turn: RzdTurn):
     turn.suggests.extend(['Один билет в плацкартный вагон', 'Два билета в купе'])
 
 
-@csc.add_handler(priority=6, stages=['expect_all_train_data'], intents=['selecting_train'])
+@csc.add_handler(priority=6, stages=['expect_all_train_data'])
 def expect_all_train_data(turn: RzdTurn):
     forms = turn.forms['selecting_train']
 
@@ -189,13 +190,13 @@ def expect_all_train_data(turn: RzdTurn):
     print(f"expect_all_train_data stage: {turn.stage}")
 
 
-@csc.add_handler(priority=6, stages=['expect_car_type'], intents=['selecting_train'])
+@csc.add_handler(priority=6, stages=['expect_car_type'], intents=['car_type_slot_filling'])
 def expect_car_type(turn: RzdTurn):
     # Уточняем тип вагоне
     print("expect_car_type handler")
 
     # Должен быть заполнен интент selecting_train и слот car_type
-    forms = turn.forms['selecting_train']
+    forms = turn.forms.get('selecting_train', None) or turn.forms.get('car_type_slot_filling', None)
     car_type = forms.get('car_type', None)
 
     if not car_type:
@@ -207,16 +208,17 @@ def expect_car_type(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['car_type'] = car_type
+        turn.stage = 'expect_all_train_data'
 
 
-@csc.add_handler(priority=6, stages=['expect_seat_type'], intents=['selecting_train'])
+@csc.add_handler(priority=6, stages=['expect_seat_type'], intents=['seat_type_slot_filling'])
 def expect_seat_type(turn: RzdTurn):
     # Уточняем тип места
     print("expect_seat_type handler")
 
     # Должен быть заполнен интент selecting_train и слот car_type
     # turn.text, forms.get() or forms.get()
-    forms = turn.forms['selecting_train']
+    forms = turn.forms.get('selecting_train', None) or turn.forms.get('seat_type_slot_filling', None)
     seat_type = forms.get('seat_type', None)
     car_type = turn.user_object.get('car_type', None)
 
@@ -231,15 +233,16 @@ def expect_seat_type(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['seat_type'] = seat_type
+        turn.stage = 'expect_all_train_data'
 
 
-@csc.add_handler(priority=6, stages=['expect_quantity'], intents=['selecting_train'])
+@csc.add_handler(priority=6, stages=['expect_quantity'], intents=['tickets_quantity_slot_filling'])
 def expect_quantity(turn: RzdTurn):
     # Уточняем количество билетов
     print("expect_quantity handler")
     # Должен быть заполнен интент selecting_train и слот car_type
 
-    forms = turn.forms['selecting_train']
+    forms = turn.forms.get('selecting_train', None) or turn.forms.get('tickets_quantity_slot_filling', None)
     quantity = forms.get('quantity', None)
 
     if quantity is None:
@@ -251,3 +254,4 @@ def expect_quantity(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['seat_type'] = quantity
+        turn.stage = 'expect_all_train_data'
