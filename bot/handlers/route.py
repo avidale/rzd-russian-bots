@@ -34,11 +34,12 @@ def check_slots_and_chose_state(turn: RzdTurn):
 
     else:
         turn.response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
-        next_stage = 'expect_departure_place'
+        next_stage = None
         turn.suggests.extend(['Москва', 'Петербург'])
 
-    print(f"Next stage: {next_stage}")
-    turn.stage = next_stage
+    if next_stage:
+        print(f"Next stage: {next_stage}")
+        turn.stage = next_stage
 
     return turn
 
@@ -81,15 +82,12 @@ def expect_after_slots_filled(turn: RzdTurn):
         turn.stage = 'expect_ticket_decision'
     else:
         turn.response_text = f'К сожалению, я ничего не нашла. Давайте попробуем заново'
-        # Обнуляем состояние
-        turn.stage = None
 
 
 @csc.add_handler(priority=10, intents=['intercity_route'])
 def intercity_route(turn: RzdTurn):
     print(f"intercity_route handler intents: {turn.intents}")
     print(f"intercity_route handler forms: {turn.forms['intercity_route']}")
-    print(f"current stage: {turn.stage}")
     forms = turn.forms['intercity_route']
     # from_text = turn.ctx.yandex.request.nlu.intents['route_from_to'].slots['from']
 
@@ -115,7 +113,7 @@ def expect_departure_time(turn: RzdTurn):
     print("expect_departure_time handler")
 
     # Должен быть заполнен интент slots_filing и слот when
-    forms = turn.forms['slots_filing']
+    forms = turn.forms['slots_filling']
     when_text = forms.get('when', None)
 
     if not when_text:
@@ -137,7 +135,7 @@ def expect_destination_place(turn: RzdTurn):
     print("expect_destination_place handler")
 
     # Должен быть заполнен интент slots_filing и слот to
-    forms = turn.forms['slots_filing']
+    forms = turn.forms['slots_filling']
     to_text = forms.get('to', None) or forms.get('place', None)
 
     if not to_text:
@@ -159,7 +157,7 @@ def expect_departure_place(turn: RzdTurn):
     print("expect_departure_place handler")
 
     # Должен быть заполнен интент slots_filing и слот from
-    forms = turn.forms['slots_filing']
+    forms = turn.forms['slots_filling']
     from_text = forms.get('from', None) or forms.get('place', None)
 
     if not from_text:
