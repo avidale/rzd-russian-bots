@@ -8,16 +8,18 @@ slots_filling:
     - '{{FROM_PRP}}?(?P<from>{{CITY}})'
     - '{{TO_PRP}}?(?P<to>{{CITY}})'
 
-#station:
-#  regexp:
-#    - '{{FROM_PRP}}(?P<from>{{_STATION_WIDE}})'
-#    - '{{TO_PRP}}(?P<to>{{_STATION_WIDE}})'
-#    - '(?P<fromto>{{_STATION_WIDE}})'
+suburb_ellipsis:
+  regexp:
+    - '{{ELLIPSIS}}{{FROM_PRP}}(?P<from>{{_STATION_WIDE}})'
+    - '{{ELLIPSIS}}{{TO_PRP}}(?P<to>{{_STATION_WIDE}})'
+    - '{{ELLIPSIS}}(?P<fromto>{{_STATION_WIDE}})'
+    - '{{ELLIPSIS}}{{_WHEN}}'
+    - '{{ELLIPSIS}}{{FROM_PRP}}?(?P<from>{{_STATION}}) {{TO_PRP}}?(?P<to>{{_STATION}})?( {{_WHEN}})$'
 
 suburb_route:
   regexp:
-    - '(найди )?(билеты? )?({{_SUBURBAN_PREFIX}} )?{{FROM_PRP}}?(?P<from>{{_STATION}}) {{TO_PRP}}?(?P<to>{{_STATION}})( {{_WHEN}})?'
-    #- '(найди )?(билеты? )?({{_SUBURBAN_PREFIX}} )?{{TO_PRP}}(?P<to>{{_STATION_WIDE}}){{FROM_PRP}}(?P<from>{{_STATION_WIDE}})( {{_WHEN}})?'
+    - '(найди )?(билеты? )?({{_SUBURBAN_PREFIX}} ){{FROM_PRP}}?(?P<from>{{_STATION}})?\s*{{TO_PRP}}?(?P<to>{{_STATION}})?( {{_WHEN}})?$'
+    #- '(найди )?(билеты? )?({{_SUBURBAN_PREFIX}} )?{{TO_PRP}}(?P<to>{{_STATION_WIDE}}){{FROM_PRP}}(?P<from>{{_STATION_WIDE}})( {{_WHEN}})?$'
 
 confirm_purchase:
   regexp:
