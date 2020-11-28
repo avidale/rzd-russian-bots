@@ -40,11 +40,11 @@ def suggest_stations(text, threshold=0.5, min_n=3, max_n=10, s_coef=1e-3, l_coef
     return final
 
 
-def find_route(from_code, to_code, date_to, date_back=None, timeout=0.01, max_attempts=10, timeout_inc=0.01):
-    """ Получение списка маршрутов из А в Б на определённую дату.
+def init_find_route(from_code, to_code, date_to, date_back=None):
+    """Инициализация запроса на получение списка маршрутов из А в Б на определённую дату.
     from_code и to_code - коды станций отправления и назначения (берутся из suggest_stations).
     date_to и date_back - даты в формате DD.MM.YYYY
-    Формат ответа я пока до конца не разобрал
+    Формат ответа - кортеж из словаря параметров запроса и cookie
     """
     params = dict(
         STRUCTURE_ID=735,
@@ -59,11 +59,113 @@ def find_route(from_code, to_code, date_to, date_back=None, timeout=0.01, max_at
     if date_back:
         params['dt1'] = date_back
     prev_result = requests.get('https://pass.rzd.ru/timetable/public/ru', params=params)
-    params['rid'] = prev_result.json()['rid']
+    params['rid'] = prev_result.json().get('rid', None)
     cookies = prev_result.cookies
+    return params, cookies
+
+
+def request_find_route_result(params, cookies, timeout=0.01, max_attempts=10, timeout_inc=0.01, format_result=False):
+    """Получение ранее запрошенного списка маршрутов."""
+    result = None
+
     for i in range(max_attempts):
         result = requests.get('https://pass.rzd.ru/timetable/public/ru', params=params, cookies=cookies).json()
         code = result['result']
         if code == 'OK':
-            return result
+            break
         time.sleep(timeout + timeout_inc * i)
+
+    if format_result:
+        return format_route_list(result)
+    return result
+
+
+def find_route(from_code, to_code, date_to, date_back=None, timeout=0.01, max_attempts=10, timeout_inc=0.01,
+               format_result=False):
+    """ Получение списка маршрутов из А в Б на определённую дату.
+    from_code и to_code - коды станций отправления и назначения (берутся из suggest_stations).
+    date_to и date_back - даты в формате DD.MM.YYYY
+    Формат ответа я пока до конца не разобрал
+    """
+    params, cookies = init_find_route(from_code, to_code, date_to, date_back)
+    return request_find_route_result(params, cookies, timeout, max_attempts, timeout_inc, format_result)
+
+
+def format_route_list(routes_dict):
+    """ Преобрзование словаря маршрутов в обговоренный формат."""
+    if not routes_dict or routes_dict['result'] != 'OK':
+        return []
+    result_trains = []
+
+    train_groups = routes_dict['tp']
+    for train_group in train_groups:
+        from_location = train_group['from']
+        to_location = train_group['where']
+
+        request_trains = routes_dict['tp'][0]['list']
+        for train in request_trains:
+            number = train['number']
+            brand = train.get('brand', '').lower() # сапсан, красная стрела, эксресс
+
+            local_start_date = train.get('localDate0', train.get('date0', None))
+            local_start_time = train.get('localTime0', train.get('time0', None))
+
+            local_end_date = train.get('localDate1', train.get('date1', None))
+            local_end_time = train.get('localTime1', train.get('time1', None))
+
+            from_time_zone = train.get('timeDeltaString0', None) or 'МСК+0'
+            to_time_zone = train.get('timeDeltaString1', None) or 'МСК+0'
+
+            duration = train['timeInWay']
+
+            from_station = train['station0']
+            to_station = train['station1']
+
+            cars = train['cars']
+            for car in cars:
+                free_seats_count = int(car['freeSeats'])
+                cost = car['tariff']
+                car_type = car['typeLoc']
+                if free_seats_count > 0 and car_type in ['Купе', 'Плацкартный', 'Сидячий', 'СВ', 'Люкс']:
+                    result_trains.append({
+                        "seat_type": car_type,
+                        "from": from_location,
+                        "to": to_location,
+                        "from_station": from_station,
+                        "to_station": to_station,
+                        "number": number,
+                        "brand": brand,
+                        "time_start": f"{local_start_date} {local_start_time}",
+                        "time_end": f"{local_end_date} {local_end_time}",
+                        "from_tz": from_time_zone,
+                        "to_tz": to_time_zone,
+                        "duration": duration,
+                        "cost": cost
+                    })
+
+        return result_trains
+
+
+if __name__ == "__main__":
+    moscow = suggest_stations("Москва")[0][0]['c']
+    piter = suggest_stations("Санкт-Петербург")[0][0]['c']
+    date_to = "01.12.2020"
+    print(moscow, piter)
+    print(find_route(moscow, piter, date_to, format_result=True))
+
+    vlad = suggest_stations("Владивасток")[0][0]['c']
+    irkutsk = suggest_stations("Иркутск")[0][0]['c']
+    print(suggest_stations("Владивасток"))
+    print(suggest_stations("Иркутск"))
+    date_to = "01.12.2020"
+    print(vlad, irkutsk)
+    print(find_route(vlad, piter, irkutsk, format_result=True))
+
+    orenburg = suggest_stations("Оренбург")[0][0]['c']
+    irkutsk = suggest_stations("Иркутск")[0][0]['c']
+    date_to = "01.12.2020"
+    print(orenburg, moscow)
+    print(find_route(orenburg, moscow, date_to, format_result=True))
+
+
+

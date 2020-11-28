@@ -16,7 +16,7 @@ def is_first_session(turn: RzdTurn) -> bool:
 @csc.add_handler(priority=1000, checker=is_first_session)
 def greeting_handler(turn: RzdTurn):
     # Очищаем некоторые данные о пользователе, например, заполненные слоты из предыдущей сессии
-    user_slots_to_delete = ["from_text", "to_text", "when_text"]
+    user_slots_to_delete = ["from_text", "to_text", "when_text", "car_type", "seat_type", "quantity"]
     for slot_name in user_slots_to_delete:
         if slot_name in turn.user_object:
             del turn.user_object[slot_name]

@@ -3,6 +3,8 @@ entity CarType:
         seating:
             %lemma
             сидячий
+            сапсан
+            ласточка
         first_class:
             %exact
             св
