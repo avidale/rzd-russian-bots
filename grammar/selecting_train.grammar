@@ -1,0 +1,52 @@
+root:
+    [$Want? $CarTypeExpr $QuantityAndSeatType]
+    [$Want? $QuantityAndSeatType? $CarTypeExpr]
+    [$Want? $QuantityAndSeatType $CarTypeExpr?]
+
+slots:
+    car_type:
+        type: CarType
+        source: $WeakCarType
+    seat_type:
+        type: SeatType
+        source: $WeakSeatType
+    quantity:
+        source: $Quantity
+        type: YANDEX.NUMBER
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$CarTypeExpr:
+    $CarTypePrep? [$WeakCarType $CarTypeAnchor?]
+
+$CarTypePrep:
+    в
+
+$WeakCarType:
+    $CarType
+
+$CarTypeAnchor:
+    %lemma
+    вагон
+
+$QuantityAndSeatType:
+    $Quantity? $SeatTypeExpr
+
+$SeatTypeExpr:
+    [$WeakSeatType? $SeatTypeAnchor]
+
+$WeakSeatType:
+    $SeatType
+
+$SeatTypeAnchor:
+    %lemma
+    место | билет
+
+$Quantity:
+    $YANDEX.NUMBER
+
+$Want:
+    %lemma
+    хочу | выбираю | желаю | нужно | необходимо | куплю

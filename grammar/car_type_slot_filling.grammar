@@ -1,0 +1,14 @@
+root:
+    $WeakCarType
+
+slots:
+    car_type:
+        type: CarType
+        source: $WeakCarType
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$WeakCarType:
+    $CarType
