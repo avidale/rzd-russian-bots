@@ -27,11 +27,10 @@ class RzdDialogManager(BaseDialogManager):
         logger.debug('loading intents..')
 
         self.intents = load_intents_with_replacement(
-            intents_fn='config/intents.yaml',
-            expressions_fn='config/expressions.yaml',
+             intents_fn='config/intents.yaml',
+             expressions_fn='config/expressions.yaml',
         )
-        if os.getenv('PRECOMPILE_REGEX'):
-            compile_intents_re(self.intents)
+        compile_intents_re(self.intents)
         logger.debug('loading world..')
         self.rasp_api = rasp_api or RaspSearcher()
         self.world = self.rasp_api.get_world()
