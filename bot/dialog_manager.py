@@ -7,12 +7,15 @@ from tgalice.interfaces.yandex import extract_yandex_forms
 from tgalice.nlu.basic_nlu import fast_normalize
 from tgalice.nlu.regex_expander import load_intents_with_replacement
 
+from api.rasp import RaspSearcher
 from bot.turn import RzdTurn, csc
+import bot.handlers  # noqa
 import bot.handlers.route  # noqa: the handlers are registered there
+from utils.re_utils import match_forms, compile_intents_re
 
 
 class RzdDialogManager(BaseDialogManager):
-    def __init__(self, cascade: Cascade = None, **kwargs):
+    def __init__(self, cascade: Cascade = None, rasp_api=None, **kwargs):
         super(RzdDialogManager, self).__init__(**kwargs)
         self.cascade = cascade or csc
 
@@ -20,6 +23,13 @@ class RzdDialogManager(BaseDialogManager):
             intents_fn='config/intents.yaml',
             expressions_fn='config/expressions.yaml',
         )
+        compile_intents_re(self.intents)
+        self.rasp_api = rasp_api or RaspSearcher()
+        self.world = self.rasp_api.get_world()
+        self.code2obj = {}
+        for t, d in self.world.items():
+            for o in d:
+                self.code2obj[o['yandex_code']] = o
 
     def respond(self, ctx: Context):
         text, forms, intents = self.nlu(ctx)
@@ -29,6 +39,8 @@ class RzdDialogManager(BaseDialogManager):
             intents=intents,
             forms=forms,
             user_object=ctx.user_object,
+            rasp_api=self.rasp_api,
+            world=self.code2obj,
         )
         handler_name = self.cascade(turn)
         print(f"Handler name: {handler_name}")
@@ -38,8 +50,7 @@ class RzdDialogManager(BaseDialogManager):
 
     def nlu(self, ctx):
         text = fast_normalize(ctx.message_text or '')
-        forms = self.match_forms(text)
-
+        forms = match_forms(text=text, intents=self.intents)
         if ctx.yandex:
             ya_forms = extract_yandex_forms(ctx.yandex)
             forms.update(ya_forms)
@@ -55,17 +66,3 @@ class RzdDialogManager(BaseDialogManager):
         print(f"Intents: {intents}")
         print(f"Forms: {forms}")
         return text, forms, intents
-
-    def match_forms(self, text):
-        forms = {}
-        for intent_name, intent_value in self.intents.items():
-            if 'regexp' in intent_value:
-                exps = intent_value['regexp']
-                if isinstance(exps, str):
-                    exps = [exps]
-                for exp in exps:
-                    match = regex.match(exp, text)
-                    if match:
-                        forms[intent_name] = match.groupdict()
-                        break
-        return forms

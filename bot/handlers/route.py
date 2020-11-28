@@ -1,6 +1,7 @@
 import tgalice
 
 from bot.turn import RzdTurn, csc
+from utils.date_convertor import convert_date_to_abs, date2ru
 
 
 def check_slots_and_chose_state(turn: RzdTurn):
@@ -88,6 +89,7 @@ def expect_after_slots_filled(turn: RzdTurn):
 def intercity_route(turn: RzdTurn):
     print(f"intercity_route handler intents: {turn.intents}")
     print(f"intercity_route handler forms: {turn.forms['intercity_route']}")
+    print(f"current stage: {turn.stage}")
     forms = turn.forms['intercity_route']
     # from_text = turn.ctx.yandex.request.nlu.intents['route_from_to'].slots['from']
 
@@ -101,14 +103,14 @@ def intercity_route(turn: RzdTurn):
     if to_text:
         turn.user_object['to_text'] = to_text
     if when_text:
-        turn.user_object['when_text'] = when_text
+        turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
     print(f"intercity_route turn: {turn.user_object['from_text']}")
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
 
 
-@csc.add_handler(priority=20, stages=['intercity_route', 'expect_departure_time', ], intents=['slots_filling'])
+@csc.add_handler(priority=20, stages=['expect_departure_time'], intents=['slots_filling'])
 def expect_departure_time(turn: RzdTurn):
     print("expect_departure_time handler")
 
@@ -123,13 +125,13 @@ def expect_departure_time(turn: RzdTurn):
         turn.stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
     else:
-        # Получили недостающий слот со временем. Заполняем данные
-        turn.user_object['when_text'] = when_text
+        # Получили недостающий слот со временем. Заполняем данные=
+        turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
 
 
-@csc.add_handler(priority=20, stages=['intercity_route', 'expect_destination_place'], intents=['slots_filling'])
+@csc.add_handler(priority=20, stages=['expect_destination_place'], intents=['slots_filling'])
 def expect_destination_place(turn: RzdTurn):
     # Уточняем место назначения
     print("expect_destination_place handler")
@@ -151,7 +153,7 @@ def expect_destination_place(turn: RzdTurn):
         print(f"turn.response_text: {turn.response_text}")
 
 
-@csc.add_handler(priority=20, stages=['intercity_route', 'expect_departure_place'], intents=['slots_filling'])
+@csc.add_handler(priority=20, stages=['expect_departure_place'], intents=['slots_filling'])
 def expect_departure_place(turn: RzdTurn):
     # Уточняем место отправления
     print("expect_departure_place handler")

@@ -1,6 +1,6 @@
 import tgalice
 
-from bot.turn import RzdTurn, csc
+from bot.turn import RzdTurn, csc, TRANSIENT_SLOTS
 
 
 def is_first_session(turn: RzdTurn) -> bool:
@@ -15,15 +15,13 @@ def is_first_session(turn: RzdTurn) -> bool:
 
 @csc.add_handler(priority=1000, checker=is_first_session)
 def greeting_handler(turn: RzdTurn):
-    # Очищаем некоторые данные о пользователе, например, заполненные слоты из предыдущей сессии
-    user_slots_to_delete = ["from_text", "to_text", "when_text"]
-    for slot_name in user_slots_to_delete:
-        if slot_name in turn.user_object:
-            del turn.user_object[slot_name]
-
-    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поиск.' \
+    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поезд.' \
                          'Чтобы выйти из навыка, скажите "Хватит".'
     turn.suggests.append('Помощь')
+
+    for slot in TRANSIENT_SLOTS:
+        if slot in turn.user_object:
+            del turn.user_object[slot]
 
 
 @csc.add_handler(priority=1, intents=['help', 'YANDEX.HELP'])

@@ -1,5 +1,10 @@
+attrs
+python-dotenv
 tgalice[server]
 mongomock
 pymongo
 dnspython
 regex
+requests
+timezonefinder
+pytz
