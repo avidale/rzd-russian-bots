@@ -214,6 +214,7 @@ def expect_seat_type(turn: RzdTurn):
     print("expect_seat_type handler")
 
     # Должен быть заполнен интент selecting_train и слот car_type
+    # turn.text, forms.get() or forms.get()
     forms = turn.forms['selecting_train']
     seat_type = forms.get('seat_type', None)
     car_type = turn.user_object.get('car_type', None)
@@ -249,7 +250,3 @@ def expect_quantity(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['seat_type'] = quantity
-
-
-
-

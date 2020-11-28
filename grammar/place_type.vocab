@@ -1,0 +1,8 @@
+entity PlaceType:
+    values:
+        upper:
+            %lemma
+            верхний
+        bottom:
+            %lemma
+            нижний
