@@ -1,3 +1,4 @@
+import logging
 import os
 import regex
 import tgalice
@@ -15,24 +16,31 @@ import bot.handlers.route  # noqa: the handlers are registered there
 from utils.re_utils import match_forms, compile_intents_re
 
 
+logger = logging.getLogger(__name__)
+
+
 class RzdDialogManager(BaseDialogManager):
     def __init__(self, cascade: Cascade = None, rasp_api=None, **kwargs):
         super(RzdDialogManager, self).__init__(**kwargs)
         self.cascade = cascade or csc
 
+        logger.debug('loading intents..')        
         self.intents = {}
         # self.intents = load_intents_with_replacement(
         #     intents_fn='config/intents.yaml',
         #     expressions_fn='config/expressions.yaml',
         # )
+        
         if os.getenv('PRECOMPILE_REGEX'):
             compile_intents_re(self.intents)
+        logger.debug('loading world..')
         self.rasp_api = rasp_api or RaspSearcher()
         self.world = self.rasp_api.get_world()
         self.code2obj = {}
         for t, d in self.world.items():
             for o in d:
                 self.code2obj[o['yandex_code']] = o
+        logger.debug('the world loaded.')
 
     def respond(self, ctx: Context):
         text, forms, intents = self.nlu(ctx)
