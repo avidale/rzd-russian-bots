@@ -20,22 +20,12 @@ class RzdDialogManager(BaseDialogManager):
             intents_fn='config/intents.yaml',
             expressions_fn='config/expressions.yaml',
         )
-        print('INTENTS', self.intents)
 
     def respond(self, ctx: Context):
-        forms = self.match_forms(fast_normalize(ctx.message_text))
-        if ctx.yandex:
-            ya_forms = extract_yandex_forms(ctx.yandex)
-            forms.update(ya_forms)
-        intents = {intent_name: 1 for intent_name in forms}
-        if tgalice.nlu.basic_nlu.like_help(ctx.message_text):
-            intents['help'] = 1
-
-        print(f"Intents: {intents}")
-        print(f"Forms: {forms}")
+        text, forms, intents = self.nlu(ctx)
         turn = RzdTurn(
             ctx=ctx,
-            text=fast_normalize(ctx.message_text),
+            text=text,
             intents=intents,
             forms=forms,
             user_object=ctx.user_object,
@@ -45,6 +35,20 @@ class RzdDialogManager(BaseDialogManager):
         self.cascade.postprocess(turn)
         print()
         return turn.make_response()
+
+    def nlu(self, ctx):
+        text = fast_normalize(ctx.message_text or '')
+        forms = self.match_forms(text)
+        if ctx.yandex:
+            ya_forms = extract_yandex_forms(ctx.yandex)
+            forms.update(ya_forms)
+        intents = {intent_name: 1 for intent_name in forms}
+        if tgalice.nlu.basic_nlu.like_help(ctx.message_text):
+            intents['help'] = 1
+
+        print(f"Intents: {intents}")
+        print(f"Forms: {forms}")
+        return text, forms, intents
 
     def match_forms(self, text):
         forms = {}

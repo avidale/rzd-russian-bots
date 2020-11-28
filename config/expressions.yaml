@@ -1,2 +1,6 @@
 BIG_CITY: '(москв[а-я]|питер[а-я]?|(санкт-)?петербург[а-я]?|сочи)'
 CITY: '{{BIG_CITY}}'  # todo: add more options
+REL_DATE: '(сегодня|завтра|послезавтра)'
+
+# expressions with named groups will be prepended with underscore
+_WHEN: '(?P<when>{{REL_DATE}})'

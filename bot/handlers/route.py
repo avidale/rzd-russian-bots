@@ -5,11 +5,11 @@ from bot.turn import RzdTurn, csc
 
 def check_slots_and_chose_state(turn: RzdTurn):
     """Проверяем что заполнены все слоты. Если что-то не заполнено то выбираем какой заполнить."""
-    print(turn.ctx.user_object)
+    print(turn.user_object)
     # Достаем все возможные слоты из объекта
-    from_text = turn.ctx.user_object.get("from_text", None)
-    to_text = turn.ctx.user_object.get("to_text", None)
-    when_text = turn.ctx.user_object.get("when_text", None)
+    from_text = turn.user_object.get("from_text", None)
+    to_text = turn.user_object.get("to_text", None)
+    when_text = turn.user_object.get("when_text", None)
 
     if from_text and to_text and when_text:
         turn.response_text = f'Ищу билеты {from_text} {to_text} {when_text}. Все правильно?'
@@ -60,7 +60,6 @@ def intercity_route(turn: RzdTurn):
     if when_text:
         turn.user_object['when_text'] = when_text
 
-    turn.user_object["from_text"] = "from_text"
     print(f"intercity_route turn: {turn.user_object['from_text']}")
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
@@ -92,7 +91,7 @@ def expect_destination_place(turn: RzdTurn):
 
     # Должен быть заполнен интент slots_filing и слот to
     forms = turn.forms['slots_filing']
-    to_text = forms.get('to', None)
+    to_text = forms.get('to', None) or forms.get('place', None)
 
     if not to_text:
         # Во время дозаполнения слота места назначения мы не получили данный слот. Переспрашиваем ещё раз
@@ -112,7 +111,7 @@ def expect_departure_place(turn: RzdTurn):
 
     # Должен быть заполнен интент slots_filing и слот from
     forms = turn.forms['slots_filing']
-    from_text = forms.get('from', None)
+    from_text = forms.get('from', None) or forms.get('place', None)
 
     if not from_text:
         # Во время дозаполнения слота места отправления мы не получили данный слот. Переспрашиваем ещё раз
