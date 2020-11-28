@@ -2,6 +2,7 @@ import http
 
 import requests
 import time
+import re
 
 from collections import Counter
 
@@ -62,6 +63,60 @@ def suggest_first_station(text):
         return stations[0][0]['c']
 
     return None
+
+
+TIME_MAPPING = {
+    "night": "ночь",
+    "morning": "утро",
+    "afternoon": "день",
+    "evening": "вечер"
+}
+
+
+def get_time_of_day(time_str):
+    """Узнаем какой тег времени дня у этого билета.
+    Args:
+        time_str (str): время дня в формате HH:MM
+
+    Returns:
+        str|None: Тег времени дня или None, если не подходит формат
+    """
+    if not re.match(r"^\d{1,2}:\d{2}$", "01:30"):
+        return None
+    hours = int(time_str.split(":")[0])
+    if hours in range(0, 6):
+        return "night"
+    elif hours in range(6, 12):
+        return "morning"
+    elif hours in range(12, 18):
+        return "afternoon"
+    else:
+        return "evening"
+
+
+def filter_trains_by_time_tags(trains, time_tags):
+    """Фильтруем все билеты по наличию в них тегов времени дня из заданного входного списка тегов."""
+    filtered_trains = []
+    for train in trains:
+        train_tag = train.get('time_tag', None)
+        if train_tag and train_tag in time_tags:
+            filtered_trains.append(train)
+    return filtered_trains
+
+
+def time_tag_attribution(trains):
+    """Проставляем тег времени дня ко всем билетам."""
+    time_tags = []
+    for idx, train in enumerate(trains):
+        datetime_parts = train["time_start"].split()
+        if len(datetime_parts) != 2:
+            continue
+        train_time_str = datetime_parts[1]
+        train_tag = get_time_of_day(train_time_str)
+        time_tags.append(train_tag)
+        # Заполняем тег для билета
+        trains[idx]["time_tag"] = train_tag
+    return trains, set(time_tags)
 
 
 def init_find_route(from_code, to_code, date_to, date_back=None):
