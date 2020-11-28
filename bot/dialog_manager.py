@@ -39,12 +39,18 @@ class RzdDialogManager(BaseDialogManager):
     def nlu(self, ctx):
         text = fast_normalize(ctx.message_text or '')
         forms = self.match_forms(text)
+
         if ctx.yandex:
             ya_forms = extract_yandex_forms(ctx.yandex)
             forms.update(ya_forms)
         intents = {intent_name: 1 for intent_name in forms}
+
         if tgalice.nlu.basic_nlu.like_help(ctx.message_text):
             intents['help'] = 1
+        if tgalice.nlu.basic_nlu.like_yes(ctx.message_text):
+            intents['yes'] = 1
+        if tgalice.nlu.basic_nlu.like_no(ctx.message_text):
+            intents['no'] = 1
 
         print(f"Intents: {intents}")
         print(f"Forms: {forms}")
