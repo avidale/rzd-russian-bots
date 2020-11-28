@@ -1,0 +1,3 @@
+intercity_route:
+  regexp:
+    - '(найди )?(билеты? )?(от |из |с )?(?P<from>{{CITY}}) (до |в |к |на )?(?P<to>{{CITY}})'

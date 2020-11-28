@@ -1,0 +1,2 @@
+BIG_CITY: '(москв[а-я]|питер[а-я]?|(санкт-)?петербург[а-я]?|сочи)'
+CITY: '{{BIG_CITY}}'  # todo: add more options

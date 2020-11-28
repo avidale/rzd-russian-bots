@@ -2,3 +2,4 @@ tgalice[server]
 mongomock
 pymongo
 dnspython
+regex
