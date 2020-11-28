@@ -1,0 +1,44 @@
+root:
+    [(ну|наверное)* $Common? ($Morning|$Afternoon|$Evening|$Night|$Earlier|$Later) $Ticket?]
+
+slots:
+    morning:
+        source: $Morning
+    afternoon:
+        source: $Afternoon
+    evening:
+        source: $Evening
+    night:
+        source: $Night
+    earlier:
+        source: $Earlier
+    later:
+        source: $Later
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$Common:
+    %lemma
+    давай | хочу | лучше | [мне удобней] | [можно пожалуйста?]
+$Ticket:
+    билет | рейс | поезд | маршрут | время | время дня
+$Morning:
+    %lemma
+    утром | с утра | на утро | утренний | утро
+$Afternoon:
+    %lemma
+    днем | на день | дневной | день | после обеда
+$Evening:
+    %lemma
+    вечером | вечерний | в конце дня | на вечер | вечер
+$Night:
+    %lemma
+    ночной | ночью | на ночь | ночь | в ночь
+$Earlier:
+    %lemma
+    пораньше | в начале дня | рано | не поздно
+$Later:
+    %lemma
+    попозже | в конце дня | позже
