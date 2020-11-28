@@ -3,6 +3,9 @@ import tgalice
 
 from bot.dialog_manager import RzdDialogManager
 
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO)
 
 mongo_db = tgalice.storage.database_utils.get_mongo_or_mock()

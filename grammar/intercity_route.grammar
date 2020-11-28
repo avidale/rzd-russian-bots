@@ -12,6 +12,7 @@ slots:
         source: $WeakTo
     when:
         source: $WeakWhen
+        type: YANDEX.DATETIME
 
 filler:
     алиса
@@ -58,4 +59,3 @@ $Find:
 $Ticket:
     %lemma
     поезд | билет
-
