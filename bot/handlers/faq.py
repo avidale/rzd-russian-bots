@@ -3,7 +3,7 @@ import tgalice
 from bot.turn import RzdTurn, csc
 
 
-def is_first_session(turn: RzdTurn):
+def is_first_session(turn: RzdTurn) -> bool:
     if turn.ctx.session_is_new():
         return True
     if turn.ctx.source == tgalice.SOURCES.TEXT and not turn.ctx.message_text:

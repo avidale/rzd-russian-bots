@@ -1,1 +1,4 @@
-tgalice
+tgalice[server]
+mongomock
+pymongo
+dnspython

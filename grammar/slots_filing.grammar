@@ -1,0 +1,50 @@
+root:
+    $From
+    $To
+    $When
+
+slots:
+    from:
+        source: $WeakFrom
+    to:
+        source: $WeakTo
+    when:
+        source: $WeakWhen
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$From:
+    %lemma
+    $FromPrep? $WeakFrom
+$FromPrep:
+    от
+    из
+    с
+$To:
+    %lemma
+    $ToPrep? $WeakTo
+$ToPrep:
+    до
+    в
+    на
+    к
+$When:
+    %lemma
+    $WhenPrep? $WeakWhen
+$WhenPrep:
+    на
+    в
+$WeakFrom:
+    $Poi
+$WeakTo:
+    $Poi
+$WeakWhen:
+    $Date
+$Poi:
+    %lemma
+    $YANDEX.GEO
+$Date:
+    %lemma
+    $YANDEX.DATETIME

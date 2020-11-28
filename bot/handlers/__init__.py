@@ -1,1 +1,1 @@
-from . import faq
+from . import faq, route

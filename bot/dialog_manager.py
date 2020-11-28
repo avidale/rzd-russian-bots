@@ -6,7 +6,7 @@ from tgalice.interfaces.yandex import extract_yandex_forms
 from tgalice.nlu.basic_nlu import fast_normalize
 
 from bot.turn import RzdTurn, csc
-import bot.handlers  # noqa: the handlers are registered there
+import bot.handlers.route  # noqa: the handlers are registered there
 
 
 class RzdDialogManager(BaseDialogManager):
@@ -21,12 +21,17 @@ class RzdDialogManager(BaseDialogManager):
         intents = {intent_name: 1 for intent_name in forms}
         if tgalice.nlu.basic_nlu.like_help(ctx.message_text):
             intents['help'] = 1
+
+        print(f"Intents: {intents}")
+        print(f"Forms: {forms}")
         turn = RzdTurn(
             ctx=ctx,
             text=fast_normalize(ctx.message_text),
             intents=intents,
-            forms=forms,
+            forms=forms
         )
         handler_name = self.cascade(turn)
+        print(f"Handler name: {handler_name}")
         self.cascade.postprocess(turn)
+        print()
         return turn.make_response()
