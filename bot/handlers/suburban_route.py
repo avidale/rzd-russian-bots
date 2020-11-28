@@ -31,5 +31,14 @@ def suburb_route(turn: RzdTurn, force=False):
     ft, fn = extract_slot_with_code('from', form, text2slots)
     tt, tn = extract_slot_with_code('to', form, text2slots)
 
+    if fn and tn:
+        result = turn.rasp_api.suburban_trains_between(code_from=fn, code_to=tn)
+        segments = result['segments']
+        search = result['search']
+        from_norm = search['from']['title']
+        to_norm = search['to']['title']
+        turn.response_text = f'Нашлось минимум {len(segments)} электричек от станции {from_norm} до станции {to_norm}.'
+        return
+
     turn.response_text = f'Вы хотите поехать на электричке от {ft} до {tt}, верно?'.format()
     turn.suggests.append('да')

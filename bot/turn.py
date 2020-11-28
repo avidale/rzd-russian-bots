@@ -1,8 +1,12 @@
+import attr
 from tgalice.cascade import DialogTurn, Cascade
 
+from api.rasp import RaspSearcher
 
+
+@attr.s
 class RzdTurn(DialogTurn):
-    pass
+    rasp_api: RaspSearcher = attr.ib(factory=RaspSearcher)
 
 
 csc = Cascade()

@@ -1,5 +1,8 @@
+attrs
+dotenv
 tgalice[server]
 mongomock
 pymongo
 dnspython
 regex
+requests
