@@ -8,7 +8,9 @@ from tgalice.nlu.basic_nlu import fast_normalize
 from tgalice.nlu.regex_expander import load_intents_with_replacement
 
 from bot.turn import RzdTurn, csc
+import bot.handlers  # noqa
 import bot.handlers.route  # noqa: the handlers are registered there
+from utils.re_utils import match_forms
 
 
 class RzdDialogManager(BaseDialogManager):
@@ -38,7 +40,7 @@ class RzdDialogManager(BaseDialogManager):
 
     def nlu(self, ctx):
         text = fast_normalize(ctx.message_text or '')
-        forms = self.match_forms(text)
+        forms = match_forms(text=text, intents=self.intents)
         if ctx.yandex:
             ya_forms = extract_yandex_forms(ctx.yandex)
             forms.update(ya_forms)
@@ -49,17 +51,3 @@ class RzdDialogManager(BaseDialogManager):
         print(f"Intents: {intents}")
         print(f"Forms: {forms}")
         return text, forms, intents
-
-    def match_forms(self, text):
-        forms = {}
-        for intent_name, intent_value in self.intents.items():
-            if 'regexp' in intent_value:
-                exps = intent_value['regexp']
-                if isinstance(exps, str):
-                    exps = [exps]
-                for exp in exps:
-                    match = regex.match(exp, text)
-                    if match:
-                        forms[intent_name] = match.groupdict()
-                        break
-        return forms
