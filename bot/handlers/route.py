@@ -236,11 +236,13 @@ def expect_departure_place(turn: RzdTurn):
 
 
 def get_human_readable_existing_car_types(trains: list):
+    """Получение списка человеко-читаемых типов вагонов."""
     existing_car_types = set(train['seat_type'] for train in trains)
     return [car_type.capitalize() for car_type in existing_car_types]
 
 
 def car_type_to_rzd_type(car_type):
+    """Перевод типа вагона из грамматики в тип вагона в RZD API."""
     mapping = {
         "seating": "Сидячий",
         "first_class": "СВ",
@@ -252,6 +254,7 @@ def car_type_to_rzd_type(car_type):
 
 
 def create_suggestions_for_car_types(rzd_car_types):
+    """Формирования списка предложения по списку типов доступных поездов."""
     suggestions = []
     if "Купе" in rzd_car_types:
         suggestions.append("Нижнее место в купе")
@@ -267,6 +270,7 @@ def create_suggestions_for_car_types(rzd_car_types):
 
 
 def car_type_to_human_str(car_type: str, form=0):
+    """Перевод типа вагона в человеко-читаемый вид с учетом склонения."""
     plural_mapping = {
         "seating": "сидячие",
         "first_class": "СВ",
@@ -316,6 +320,7 @@ def car_type_to_human_str(car_type: str, form=0):
 
 
 def seat_type_to_human_str(seat_type: str, form=0):
+    """Перевод типа места в человеко-читаемый вид с учетом склонения."""
     plural_mapping = {
         "upper": "верхние",
         "bottom": "нижние"
