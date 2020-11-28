@@ -40,6 +40,7 @@ class RzdDialogManager(BaseDialogManager):
             forms=forms,
             user_object=ctx.user_object,
             rasp_api=self.rasp_api,
+            world=self.code2obj,
         )
         handler_name = self.cascade(turn)
         print(f"Handler name: {handler_name}")

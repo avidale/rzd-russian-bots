@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from time import timezone
+from pytz import timezone
 from typing import Optional
 from timezonefinder import TimezoneFinder
 

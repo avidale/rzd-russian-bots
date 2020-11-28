@@ -45,6 +45,7 @@ def suburb_route(turn: RzdTurn, force=False):
             name_to=to_norm,
             results=result,
             only_next=True,
+            from_meta=turn.world.get(fn),
         )
         return
 

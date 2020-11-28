@@ -1,3 +1,5 @@
+from typing import Dict
+
 import attr
 from tgalice.cascade import DialogTurn, Cascade
 
@@ -7,6 +9,7 @@ from api.rasp import RaspSearcher
 @attr.s
 class RzdTurn(DialogTurn):
     rasp_api: RaspSearcher = attr.ib(factory=RaspSearcher)
+    world: Dict[str, Dict] = attr.ib(factory=dict)
 
 
 csc = Cascade()

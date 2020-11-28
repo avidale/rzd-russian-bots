@@ -30,13 +30,16 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None):
                     valid.append(v)
     else:
         valid = results['segments']
-    print(len(results['segments']), len(valid), valid[0]['departure'])
+    print(len(results['segments']), len(valid), valid[0]['departure'] if valid else None)
     if len(valid) <= 0:
         pre = 'Сегодня все электрички от {} до {} ушли. Но вот какие были: в'.format(name_from, name_to)
         results_to_read = results['segments']
     else:
         pre = 'Вот какие ближайшие электрички от {} до {} есть: в'.format(name_from, name_to)
-    times = [human_readable_time(r['departure']) for r in valid]
+        results_to_read = valid
+    times = [human_readable_time(r['departure']) for r in results_to_read]
+    if len(times) == 0:
+        return f'Никаких электричек от {name_from} до {name_to} не нашлось.'
     if len(times) == 1:
         pre = pre + ' {}'.format(times[0])
     else:
