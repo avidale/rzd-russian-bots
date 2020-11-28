@@ -4,7 +4,7 @@ from bot.turn import RzdTurn, csc
 
 
 def check_slots_and_chose_state(turn: RzdTurn):
-    """Проверяем что заполнены все слоты. Если что-то не заполнено то выбираем какой заполнить."""
+    """Первый этап. Проверяем что заполнены все слоты. Если что-то не заполнено то выбираем какой заполнить."""
     print(turn.user_object)
     # Достаем все возможные слоты из объекта
     from_text = turn.user_object.get("from_text", None)
@@ -14,6 +14,7 @@ def check_slots_and_chose_state(turn: RzdTurn):
     if from_text and to_text and when_text:
         turn.response_text = f'Ищу билеты {from_text} {to_text} {when_text}. Все правильно?'
         turn.stage = 'expect_after_slots_filled'
+        turn.suggests.extend(['Да', 'Нет'])
         # На данном этапе полностью получены все слоты
 
     elif from_text and to_text:
@@ -35,6 +36,41 @@ def check_slots_and_chose_state(turn: RzdTurn):
         turn.response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
         turn.stage = 'expect_departure_place'
         turn.suggests.extend(['Москва', 'Петербург'])
+
+    print(f"next stage is: {turn.stage}")
+
+    return turn
+
+
+def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
+    """Второй этап. Заполнение слотов для выбора поезда."""
+    print(turn.user_object)
+    # Достаем все возможные слоты из объекта
+    car_type = turn.user_object.get("car_type", None)
+    seat_type = turn.user_object.get("seat_type", None)
+    quantity = turn.user_object.get("quantity", None)
+    print(f"car_type: {car_type}")
+    print(f"seat_type: {seat_type}")
+    print(f"quantity: {quantity}")
+
+    if car_type and seat_type and quantity:
+        turn.response_text = f'Покупаем {quantity} билет в {car_type} вагон, {seat_type} мест. Все правильно?'
+        turn.stage = 'expect_after_selecting_train_slots_filled'
+        turn.suggests.extend(['Да', 'Нет'])
+    if not car_type:
+        turn.response_text = f'Какой хотите тип вагона?'
+        turn.stage = 'expect_car_type'
+        turn.suggests.extend(['Плацкартный', 'Купейный', 'СВ', 'Сидячий'])
+    elif car_type != 'св' and car_type != 'сидячий' and not seat_type:
+        # Для плацкартного и купейного вагона уточняем тип места
+        turn.response_text = 'Хотите верхнее место?'
+        turn.stage = 'expect_seat_type'
+        turn.suggests.extend(['Верхнее', 'Нижнее'])
+    elif not quantity:
+        # Уточняем количество билетов
+        turn.response_text = 'Сколько билетов вы хотите купить?'
+        turn.stage = 'expect_quantity'
+        turn.suggests.extend(['Один', 'Два', 'Три'])
 
     print(f"next stage is: {turn.stage}")
 
@@ -122,3 +158,98 @@ def expect_departure_place(turn: RzdTurn):
     else:
         # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['from_text'] = from_text
+
+
+@csc.add_handler(priority=6, stages=['expect_after_slots_filled'])
+def expect_after_slots_filled(turn: RzdTurn):
+    print(f"intents: {turn.intents}")
+    turn.response_text = 'Найдено несколько поездов. Какое тип вагона и места вы хотите?'
+    turn.stage = 'expect_all_train_data'
+    turn.suggests.extend(['Один билет в плацкартный вагон', 'Два билета в купе'])
+
+
+@csc.add_handler(priority=6, stages=['expect_all_train_data'], intents=['selecting_train'])
+def expect_all_train_data(turn: RzdTurn):
+    forms = turn.forms['selecting_train']
+
+    car_type = forms.get('car_type', None)
+    seat_type = forms.get('seat_type', None)
+    quantity = forms.get('quantity', None)
+
+    if car_type:
+        turn.user_object['car_type'] = car_type
+    if seat_type:
+        turn.user_object['seat_type'] = seat_type
+    if quantity:
+        turn.user_object['quantity'] = quantity
+
+    turn = expect_slots_and_choose_state_for_selecting_train(turn)
+    print(f"expect_all_train_data response_text: {turn.response_text}")
+    print(f"expect_all_train_data stage: {turn.stage}")
+
+
+@csc.add_handler(priority=6, stages=['expect_car_type'], intents=['selecting_train'])
+def expect_car_type(turn: RzdTurn):
+    # Уточняем тип вагоне
+    print("expect_car_type handler")
+
+    # Должен быть заполнен интент selecting_train и слот car_type
+    forms = turn.forms['selecting_train']
+    car_type = forms.get('car_type', None)
+
+    if not car_type:
+        # Переспрашиваем тип вагона
+        turn.response_text = 'Какой хотите тип вагона?'
+        # Оставляем тот же стейт
+        turn.stage = 'expect_car_type'
+        turn.suggests.extend(['Плацкартный', 'Купейный', 'СВ', 'Сидячий'])
+    else:
+        # Получили недостающий слот со временем. Заполняем данные
+        turn.user_object['car_type'] = car_type
+
+
+@csc.add_handler(priority=6, stages=['expect_seat_type'], intents=['selecting_train'])
+def expect_seat_type(turn: RzdTurn):
+    # Уточняем тип места
+    print("expect_seat_type handler")
+
+    # Должен быть заполнен интент selecting_train и слот car_type
+    forms = turn.forms['selecting_train']
+    seat_type = forms.get('seat_type', None)
+    car_type = turn.user_object.get('car_type', None)
+
+    if car_type == 'св' or car_type == 'сидячий':
+        turn.user_object['seat_type'] = 'нет'
+    elif not seat_type:
+        # Для плацкартного и купейного вагона уточняем тип места
+        turn.response_text = 'Хотите верхнее место?'
+        # Оставляем тот же стейт
+        turn.stage = 'expect_seat_type'
+        turn.suggests.extend(['Верхнее', 'Нижнее'])
+    else:
+        # Получили недостающий слот со временем. Заполняем данные
+        turn.user_object['seat_type'] = seat_type
+
+
+@csc.add_handler(priority=6, stages=['expect_quantity'], intents=['selecting_train'])
+def expect_quantity(turn: RzdTurn):
+    # Уточняем количество билетов
+    print("expect_quantity handler")
+    # Должен быть заполнен интент selecting_train и слот car_type
+
+    forms = turn.forms['selecting_train']
+    quantity = forms.get('quantity', None)
+
+    if quantity is None:
+        # Уточняем количество билетов
+        turn.response_text = 'Хотите купить один билет?'
+        # Оставляем тот же стейт
+        turn.stage = 'expect_quantity'
+        turn.suggests.extend(['Да', 'Один', 'Два'])
+    else:
+        # Получили недостающий слот со временем. Заполняем данные
+        turn.user_object['seat_type'] = quantity
+
+
+
+

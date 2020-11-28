@@ -19,14 +19,14 @@ filler:
 
 $From:
     %lemma
-    $FromPrep $WeakFrom
+    $FromPrep? $WeakFrom
 $FromPrep:
     от
     из
     с
 $To:
     %lemma
-    $ToPrep $WeakTo
+    $ToPrep? $WeakTo
 $ToPrep:
     до
     в

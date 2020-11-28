@@ -1,0 +1,52 @@
+root:
+    [$Want? $CarType $QuantityAndSeatType]
+    [$Want? $QuantityAndSeatType? $CarType]
+    [$Want? $QuantityAndSeatType $CarType?]
+
+slots:
+    car_type:
+        source: $WeakCarType
+    seat_type:
+        source: $WeakSeatType
+    quantity:
+        source: $Quantity
+        type: YANDEX.NUMBER
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+
+$CarType:
+    $CarTypePrep? [$WeakCarType $CarTypeAnchor?]
+
+$CarTypePrep:
+    в
+
+$WeakCarType:
+    %lemma
+    плацкартный | купейный | св | сидячий | купе | плацкарт
+
+$CarTypeAnchor:
+    %lemma
+    вагон
+
+$QuantityAndSeatType:
+    $Quantity? $SeatType
+
+$SeatType:
+    [$WeakSeatType? $SeatTypeAnchor]
+
+$WeakSeatType:
+    %lemma
+    верхний | нижний | сидячий
+
+$SeatTypeAnchor:
+    %lemma
+    место | билет
+
+$Quantity:
+    $YANDEX.NUMBER
+
+$Want:
+    %lemma
+    хочу | выбираю | желаю | нужно | необходимо | куплю
