@@ -1,3 +1,36 @@
+entity CarType:
+    values:
+        seating:
+            %lemma
+            сидячий
+            сапсан
+            ласточка
+        first_class:
+            %lemma
+            св
+        econom:
+            %lemma
+            плацкарт
+            плацкартный
+        sleeping:
+            %lemma
+            купе
+            купейный
+        luxury:
+            %lemma
+            люкс
+
+
+entity SeatType:
+    values:
+        upper:
+            %lemma
+            верхний
+        bottom:
+            %lemma
+            нижний
+
+
 entity EStation:
     values:
         s9603022:
@@ -391,7 +424,8 @@ entity EStation:
         s9600981:
             солнечная
         s9601266:
-            мцд-2, бывш. ржевская
+            мцд-2
+            ржевская
             рижская
         s9601335:
             сортировочная
@@ -1579,3 +1613,4 @@ entity EStation:
             турия
         s9637599:
             озера
+

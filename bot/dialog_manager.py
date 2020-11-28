@@ -9,7 +9,7 @@ from tgalice.interfaces.yandex import extract_yandex_forms
 from tgalice.nlu.basic_nlu import fast_normalize
 from tgalice.nlu.regex_expander import load_intents_with_replacement
 
-from api.rasp import RaspSearcher
+from api.rasp import RaspSearcher, StationMatcher
 from bot.turn import RzdTurn, csc
 import bot.handlers  # noqa
 import bot.handlers.route  # noqa: the handlers are registered there
@@ -33,11 +33,7 @@ class RzdDialogManager(BaseDialogManager):
         compile_intents_re(self.intents)
         logger.debug('loading world..')
         self.rasp_api = rasp_api or RaspSearcher()
-        self.world = self.rasp_api.get_world()
-        self.code2obj = {}
-        for t, d in self.world.items():
-            for o in d:
-                self.code2obj[o['yandex_code']] = o
+        self.world: StationMatcher = StationMatcher(self.rasp_api.get_world())
         logger.debug('the world loaded.')
 
     def respond(self, ctx: Context):
@@ -49,7 +45,7 @@ class RzdDialogManager(BaseDialogManager):
             forms=forms,
             user_object=ctx.user_object,
             rasp_api=self.rasp_api,
-            world=self.code2obj,
+            world=self.world,
         )
         logger.debug(f'current stage is: {turn.stage}')
         handler_name = self.cascade(turn)

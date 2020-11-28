@@ -21,9 +21,11 @@ def greeting_handler(turn: RzdTurn):
         if slot_name in turn.user_object:
             del turn.user_object[slot_name]
 
-    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поиск.' \
+    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поезд.' \
                          'Чтобы выйти из навыка, скажите "Хватит".'
     turn.suggests.append('Помощь')
+    turn.suggests.append('билет москва - ярославль')
+    turn.suggests.append('электрички от беговой до сколково')
 
     for slot in TRANSIENT_SLOTS:
         if slot in turn.user_object:
@@ -33,7 +35,7 @@ def greeting_handler(turn: RzdTurn):
 @csc.add_handler(priority=1, intents=['help', 'YANDEX.HELP'])
 def help_handler(turn: RzdTurn):
     # todo: make help dependent on turn.text and maybe some context
-    turn.response_text = 'Это навык РЖД. Здесь вы можете найти и заказать билеты на поиск.' \
+    turn.response_text = 'Это навык РЖД. Здесь вы можете найти и заказать билеты на поезд.' \
                          'Чтобы выйти из навыка, скажите "Хватит".'
     turn.suggests.append('Хватит')
 

@@ -1,11 +1,13 @@
+import editdistance
 import logging
 import os
 import requests
 import statistics
 import time
-
+from collections import defaultdict, Counter
 from datetime import datetime
 
+from tgalice.nlu.basic_nlu import fast_normalize
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +101,29 @@ def prepare_the_world(stations_json, countries=None):
         'stations': stations
     }
     return world
+
+
+class StationMatcher:
+    def __init__(self, world, prefix_size=3):
+        self.world = world
+        self.code2obj = {}
+        for t, d in self.world.items():
+            for o in d:
+                self.code2obj[o['yandex_code']] = o
+        self.prefixes = defaultdict(list)
+        self.prefix_size = prefix_size
+        for s in self.code2obj.values():
+            self.prefixes[s['title'][:prefix_size].lower()].append(s['yandex_code'])
+
+    def match(self, text, stations=0, regions=None, cities=0.9, lemmatize=True):
+        scores = Counter()
+        queries = {text.lower(), text.lower()[:-1], text.lower()[-2]}
+        if lemmatize:
+            queries.add(fast_normalize(text, lemmatize=True))
+        codes = {'r': regions, 'c': cities, 's': stations}
+        for d in self.prefixes[text.lower()[:self.prefix_size]]:
+            if codes.get(d[0]) is None:
+                continue
+            scores[d] = codes[d[0]] \
+                        - sum(editdistance.eval(q, self.code2obj[d]['title']) for q in queries) / len(queries)
+        return [k for k, v in scores.most_common(10)]

@@ -1,8 +1,0 @@
-entity SeatType:
-    values:
-        upper:
-            %lemma
-            верхний
-        bottom:
-            %lemma
-            нижний

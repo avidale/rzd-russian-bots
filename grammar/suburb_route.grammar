@@ -1,0 +1,100 @@
+root:
+    [$Route? $From $To $When?]
+    [$Route? ($WeakFrom $WeakTo) $When?]
+    [$Route $From? $To? $When?]
+    [$Route? $From? $To? $When]
+
+slots:
+    from:
+        source: $WeakFrom
+    to:
+        source: $WeakTo
+    when:
+        source: $WeakWhen
+        type: YANDEX.DATETIME
+    suburban:
+        source: $Suburban
+    as_usual:
+        source: $AsUsual
+
+filler:
+    алиса
+    $YANDEX.NONSENSE
+    $AsUsual
+
+$From:
+    %lemma
+    $FromPrep? $WeakFrom
+$FromPrep:
+    от
+    из
+    с
+$To:
+    %lemma
+    $ToPrep? $WeakTo
+$ToPrep:
+    до
+    в
+    на
+    к
+$When:
+    %lemma
+    $WhenPrep? $WeakWhen
+$WhenPrep:
+    на
+    в
+    в районе
+    около
+    после
+$WeakFrom:
+    $Station
+$WeakTo:
+    $Station
+$WeakWhen:
+    $Date
+$Date:
+    %lemma
+    $YANDEX.DATETIME
+$Route:
+    ($Find|$Ticket|$Howto)+
+$Howto:
+    %lemma
+    (как? мне? доехать)
+    когда
+$Find:
+    %lemma
+    найди | покажи | открой | купи | подскажи
+$Ticket:
+    %lemma
+    расписание?
+    (ближайшая|следующая)? $Train
+    билет на?
+$Train:
+    %lemma
+    поезд
+    $Suburban
+$Suburban:
+    %lemma
+    электричка
+$Station:
+    %lemma
+    (платформа|станция)? $StationName
+$StationName:
+    %lemma
+    сколково
+    красногорск
+    тушино
+    беговая
+    петушки
+    москва
+    тверь
+    $YANDEX.NUMBER (км|километр)
+    москва? курская
+    люблино
+    столовая
+    можайск
+    Тимирязевская
+    Гончарово
+    $EStation
+$AsUsual:
+    как (обычно|всегда)

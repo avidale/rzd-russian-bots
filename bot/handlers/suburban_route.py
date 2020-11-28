@@ -62,6 +62,13 @@ def suburb_route(turn: RzdTurn, force=False):
         text2slots[v].add(k)
     ft, fn = extract_slot_with_code('from', form, text2slots)
     tt, tn = extract_slot_with_code('to', form, text2slots)
+
+    # matching stations or cities from Yandex queries
+    if ft and not fn:
+        fn = (turn.world.match(ft) or [None])[0]
+    if tt and not tn:
+        tn = (turn.world.match(tt) or [None])[0]
+
     logger.debug(f'{ft}  ({fn}) -> {tt} ({tn})')
 
     if fn:
@@ -85,7 +92,7 @@ def suburb_route(turn: RzdTurn, force=False):
             name_to=sub.to_text,
             results=result,
             only_next=True,
-            from_meta=turn.world.get(sub.from_code),
+            from_meta=turn.world.code2obj.get(sub.from_code),
         )
         if cost and segments:
             sub.cost = cost
