@@ -1,6 +1,7 @@
 import tgalice
 
 from bot.turn import RzdTurn, csc
+from utils.date_convertor import convert_date_to_abs, date2ru
 
 
 def check_slots_and_chose_state(turn: RzdTurn):
@@ -58,7 +59,7 @@ def intercity_route(turn: RzdTurn):
     if to_text:
         turn.user_object['to_text'] = to_text
     if when_text:
-        turn.user_object['when_text'] = when_text
+        turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
     print(f"intercity_route turn: {turn.user_object['from_text']}")
     turn = check_slots_and_chose_state(turn)
@@ -81,7 +82,7 @@ def expect_departure_time(turn: RzdTurn):
         turn.suggests.extend(['Завтра', 'Сегодня'])
     else:
         # Получили недостающий слот со временем. Заполняем данные
-        turn.user_object['when_text'] = when_text
+        turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
 
 @csc.add_handler(priority=8, stages=['expect_destination_place'], intents=['slots_filling'])
