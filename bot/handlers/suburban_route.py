@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from api.cppk import get_cppk_cost
 from bot.nlg.suburban import phrase_results
 from bot.turn import csc, RzdTurn
 
@@ -38,8 +39,9 @@ def suburb_route(turn: RzdTurn, force=False):
         search = result['search']
         from_norm = search['from']['title']
         to_norm = search['to']['title']
-        # todo: pass timezone
-        print(segments[0])
+
+        cost = get_cppk_cost(from_text=ft, to_text=tt, date=None, return_price=True)
+
         turn.response_text = phrase_results(
             name_from=from_norm,
             name_to=to_norm,
@@ -47,6 +49,10 @@ def suburb_route(turn: RzdTurn, force=False):
             only_next=True,
             from_meta=turn.world.get(fn),
         )
+        if cost and segments:
+            turn.response_text += f' Стоимость {cost} рублей. Желаете купить билет?'
+            turn.stage = ''
+            turn.suggests.append('Купить')
         return
 
     turn.response_text = f'Вы хотите поехать на электричке от {ft} до {tt}, верно?'.format()
