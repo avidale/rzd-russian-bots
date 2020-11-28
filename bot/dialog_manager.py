@@ -1,3 +1,4 @@
+import os
 import regex
 import tgalice
 from tgalice.cascade import Cascade
@@ -23,7 +24,8 @@ class RzdDialogManager(BaseDialogManager):
             intents_fn='config/intents.yaml',
             expressions_fn='config/expressions.yaml',
         )
-        compile_intents_re(self.intents)
+        if os.getenv('PRECOMPILE_REGEX'):
+            compile_intents_re(self.intents)
         self.rasp_api = rasp_api or RaspSearcher()
         self.world = self.rasp_api.get_world()
         self.code2obj = {}
