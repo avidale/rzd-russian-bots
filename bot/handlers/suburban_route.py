@@ -1,5 +1,8 @@
 from collections import defaultdict
 
+from tgalice.dialog import Response
+from tgalice.nlg.controls import BigImage
+
 from api.cppk import get_cppk_cost
 from bot.nlg.suburban import phrase_results
 from bot.turn import csc, RzdTurn
@@ -51,9 +54,37 @@ def suburb_route(turn: RzdTurn, force=False):
         )
         if cost and segments:
             turn.response_text += f' Стоимость {cost} рублей. Желаете купить билет?'
-            turn.stage = ''
-            turn.suggests.append('Купить')
-        return
+            turn.stage = 'confirm_sell_suburb'
+            turn.suggests.append('Да')
 
-    turn.response_text = f'Вы хотите поехать на электричке от {ft} до {tt}, верно?'.format()
-    turn.suggests.append('да')
+            turn.user_object['suburb_transaction'] = {
+                'from_text': from_norm,
+                'to_text': to_norm,
+                'price': cost or 100,
+            }
+        return
+    elif not fn:
+        turn.response_text = 'Не поняла, откуда вы хотите поехать. Можете назвать ещё раз?'
+    elif not tn:
+        turn.response_text = 'Не поняла, куда вы хотите поехать. Можете назвать ещё раз?'
+    else:
+        turn.response_text = 'Это какая-то невозможная ветка диалога'
+
+
+@csc.add_handler(priority=100, intents=['yes', 'confirm_purchase'], stages=['confirm_sell_suburb'])
+def suburb_confirm_purchase(turn: RzdTurn):
+    # todo: fill
+    tran = turn.user_object['suburb_transaction']
+    p = int(tran["price"])
+    url = f'https://rzd-skill.herokuapp.com/qr/?f={tran["from_text"]}&t={tran["to_text"]}'
+    text = f'Отлично! Продаю вам билет на электричку. С вашей карты будет списано {p} рублей.'
+    turn.response = Response(
+        image=BigImage(
+            image_id='213044/4e2dacacedfb7029f89e',
+            button_text='Скачать билет',
+            button_url=url,
+            description=text,
+        ),
+        text='',  # voice='*',
+        rich_text=text,
+    )
