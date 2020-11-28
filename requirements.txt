@@ -7,3 +7,4 @@ dnspython
 regex
 requests
 timezonefinder
+pytz
