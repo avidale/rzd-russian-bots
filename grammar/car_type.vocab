@@ -6,10 +6,8 @@ entity CarType:
             сапсан
             ласточка
         first_class:
-            %exact
+            %lemma
             св
-            эсвэ
-            эсве
         econom:
             %lemma
             плацкарт
