@@ -1,5 +1,5 @@
 attrs
-dotenv
+python-dotenv
 tgalice[server]
 mongomock
 pymongo
