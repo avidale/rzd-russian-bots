@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from bot.nlg.suburban import phrase_results
 from bot.turn import csc, RzdTurn
 
 
@@ -37,7 +38,14 @@ def suburb_route(turn: RzdTurn, force=False):
         search = result['search']
         from_norm = search['from']['title']
         to_norm = search['to']['title']
-        turn.response_text = f'Нашлось минимум {len(segments)} электричек от станции {from_norm} до станции {to_norm}.'
+        # todo: pass timezone
+        print(segments[0])
+        turn.response_text = phrase_results(
+            name_from=from_norm,
+            name_to=to_norm,
+            results=result,
+            only_next=True,
+        )
         return
 
     turn.response_text = f'Вы хотите поехать на электричке от {ft} до {tt}, верно?'.format()

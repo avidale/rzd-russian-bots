@@ -7,14 +7,15 @@ from tgalice.interfaces.yandex import extract_yandex_forms
 from tgalice.nlu.basic_nlu import fast_normalize
 from tgalice.nlu.regex_expander import load_intents_with_replacement
 
+from api.rasp import RaspSearcher
 from bot.turn import RzdTurn, csc
 import bot.handlers  # noqa
 import bot.handlers.route  # noqa: the handlers are registered there
-from utils.re_utils import match_forms
+from utils.re_utils import match_forms, compile_intents_re
 
 
 class RzdDialogManager(BaseDialogManager):
-    def __init__(self, cascade: Cascade = None, **kwargs):
+    def __init__(self, cascade: Cascade = None, rasp_api=None, **kwargs):
         super(RzdDialogManager, self).__init__(**kwargs)
         self.cascade = cascade or csc
 
@@ -22,6 +23,13 @@ class RzdDialogManager(BaseDialogManager):
             intents_fn='config/intents.yaml',
             expressions_fn='config/expressions.yaml',
         )
+        compile_intents_re(self.intents)
+        self.rasp_api = rasp_api or RaspSearcher()
+        self.world = self.rasp_api.get_world()
+        self.code2obj = {}
+        for t, d in self.world.items():
+            for o in d:
+                self.code2obj[o['yandex_code']] = o
 
     def respond(self, ctx: Context):
         text, forms, intents = self.nlu(ctx)
@@ -31,6 +39,7 @@ class RzdDialogManager(BaseDialogManager):
             intents=intents,
             forms=forms,
             user_object=ctx.user_object,
+            rasp_api=self.rasp_api,
         )
         handler_name = self.cascade(turn)
         print(f"Handler name: {handler_name}")

@@ -1,9 +1,13 @@
 from datetime import datetime, timedelta
+from time import timezone
 from typing import Optional
+from timezonefinder import TimezoneFinder
+
+tf = TimezoneFinder()  # no, it is NOT tensorflow! (-:
 
 
-def convert_date_to_abs(dt) -> Optional[datetime]:
-    now = datetime.now().replace(minute=0, hour=0, second=0, microsecond=0)
+def convert_date_to_abs(dt, tz=None) -> Optional[datetime]:
+    now = datetime.now(tz=tz).replace(minute=0, hour=0, second=0, microsecond=0)
     if isinstance(dt, dict):
         if dt.get('day_is_relative') and not dt.get('month'):
             return now + timedelta(dt['day'])
@@ -30,3 +34,8 @@ def convert_date_to_abs(dt) -> Optional[datetime]:
 def date2ru(dt: datetime):
     if dt:
         return dt.strftime('%d.%m.%Y')
+
+
+def local_now(lat, lon):
+    tz = tf.timezone_at(lng=lon, lat=lat) or 'Europe/Moscow'
+    return datetime.now(tz=timezone(tz))
