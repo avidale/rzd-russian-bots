@@ -1,6 +1,7 @@
 import tgalice
 
 from api.rzd_basic import suggest_first_station, find_route, init_find_route, request_find_route_result
+from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.morph import with_number
@@ -65,25 +66,65 @@ def get_trains(turn: RzdTurn):
 @csc.add_handler(priority=30, stages=['expect_after_slots_filled'], intents=['yes', 'no'])
 def expect_after_slots_filled(turn: RzdTurn):
     print("expect_after_slots_filled handler")
+    print(f"intents: {turn.intents}")
+
     if 'yes' in turn.intents:
         # Дождались положительного ответа от пользователя после формирования полного запроса
         # Достаем результат
-        trains_list = get_trains(turn)
-        turn.user_object['trains'] = trains_list
+        trains = get_trains(turn)
+        turn.user_object['trains'] = trains
 
-        print("Trains")
-        for train in trains_list:
+        print("Trains received after API request")
+        for train in trains:
             print(train)
 
-        print(f"intents: {turn.intents}")
-        turn.response_text = 'Найдено несколько поездов. Какое место хотите?'
-        turn.stage = 'expect_all_train_data'
-        turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
+        # Атрибуцируем тег времени для
+        trains, time_tags = time_tag_attribution(trains)
+        print(f"Trains with time tags:\n{trains}")
+        print(trains)
 
-        # turn.response_text = f'Я нашла вам несколько вариантов.'
-        # turn.stage = 'expect_ticket_decision'
+        # Проверяем, что тегов больше одного. Уточняем время дня
+        if len(time_tags) > 1:
+            tag_names = [TIME_MAPPING[tag] for tag in time_tags]
+            time_tags_str = ", ".join(tag_names)
+            turn.response_text = f'Есть поезда на {time_tags_str}. Когда желаете отправиться?'
+            turn.stage = 'expect_departure_time_tag'
+            turn.suggests.extend(tag_names)
+        else:
+            # Не даем выбрать время, потому что выбора нет
+            turn.response_text = 'Найдено несколько поездов. Какое место хотите?'
+            turn.stage = 'expect_all_train_data'
+            turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
     else:
         turn.response_text = f'К сожалению, я ничего не нашла. Давайте попробуем заново'
+
+
+@csc.add_handler(priority=30, stages=['expect_after_slots_filled', 'expect_departure_time_tag'], intents=['time_tags'])
+def expect_departure_time_tag(turn: RzdTurn):
+    print("expect_departure_time_tag handler")
+    print(f"intents: {turn.intents}")
+
+    forms = turn.forms['time_tags']
+    time_tags = forms.keys()
+
+    trains = turn.user_object['trains']
+    trains = filter_trains_by_time_tags(trains, time_tags)
+
+    print(f"Filtered trains by time tags: {trains}")
+
+    if len(trains) == 0:
+        # Если на нужное время дня нет билетов то говорим об этом и предлагаем соазу выбирать тип вагона и места
+        turn.response_text = 'К сожалению, на выбранное время дня нет билетов. ' \
+                             'Давайте выберем место в найденных билетах?'
+        turn.stage = 'expect_all_train_data'
+        turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
+    else:
+        # Теперь в юзерстейте лежат отфильтрованные по времени билеты
+        turn.user_object['trains'] = trains
+        # Переходим к выбору типа вагона и мест
+        turn.response_text = 'Какое место хотите?'
+        turn.stage = 'expect_all_train_data'
+        turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
 
 
 @csc.add_handler(priority=10, intents=['intercity_route'])
@@ -211,8 +252,8 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
     #     turn.suggests.extend(['Один', 'Два', 'Три'])
 
     print(f"next stage is: {turn.stage}")
-
     return turn
+
 
 @csc.add_handler(priority=6, stages=['expect_all_train_data'])
 def expect_all_train_data(turn: RzdTurn):
