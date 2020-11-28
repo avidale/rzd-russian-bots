@@ -353,7 +353,6 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
     return turn
 
 
-
 @csc.add_handler(priority=6, stages=['expect_all_train_data'], intents=['selecting_train'])
 def expect_all_train_data(turn: RzdTurn):
     print("expect_all_train_data handler")
@@ -394,7 +393,8 @@ def expect_car_type(turn: RzdTurn):
             turn.suggests.extend(['Плацкартный', 'Купейный', 'СВ', 'Сидячий'])
     elif trains and not car_type_to_human_str(car_type).capitalize() in get_human_readable_existing_car_types(trains):
         # Гооворим, что вагона заданного типа нет
-        turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами!' \
+        turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами ' \
+                             f'на указанное время!' \
                              f'Выберем другой тип вагона?'
         # Оставляем тот же стейт
         turn.stage = 'expect_car_type'
@@ -411,8 +411,6 @@ def expect_seat_type(turn: RzdTurn):
     # Уточняем тип места
     print("expect_seat_type handler")
 
-    # Должен быть заполнен интент selecting_train и слот car_type
-    # turn.text, forms.get() or forms.get()
     forms = turn.forms.get('selecting_train', None) or turn.forms.get('seat_type_slot_filling', None)
     seat_type = forms.get('seat_type', None)
     car_type = turn.user_object.get('car_type', None)
