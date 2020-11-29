@@ -113,6 +113,11 @@ def suburb_route(turn: RzdTurn, force=False):
     logger.debug('now is {}, search date is {}'.format(now, date))
 
     if sub.from_code and sub.to_code:
+        if form.get('back'):
+            logger.debug('turning the route backwards!')
+            sub.from_code, sub.to_code = sub.to_code, sub.from_code
+            sub.from_text, sub.to_text = sub.to_text, sub.from_text
+
         result = turn.rasp_api.suburban_trains_between(
             code_from=sub.from_code,
             code_to=sub.to_code,

@@ -7,6 +7,7 @@ TO_PRP: '(до |в |к |на )?'
 
 # expressions with named groups will be prepended with underscore
 _WHEN: '(?P<when>{{REL_DATE}})'
+_BACK: '(?P<back>(обратно|назад|в (обратную|другую|противоположную) сторону))'
 
 _SUBURBAN_PREFIX: '(?P<suburb>(на )?электриче?к[аиу])'
 

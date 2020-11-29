@@ -117,7 +117,7 @@ class StationMatcher:
         self.prefixes = defaultdict(list)
         self.prefix_size = prefix_size
         for s in self.code2obj.values():
-            for syn in make_synonyms(s['title']):
+            for syn in make_synonyms(s['title'])[0]:
                 self.prefixes[syn[:prefix_size].lower()].append(s['yandex_code'])
 
     def match(
@@ -140,8 +140,8 @@ class StationMatcher:
             geod = 0
             if center and obj.get('latitude'):
                 geod = geo_distance(center, (obj['latitude'], obj['longitude']))
-            synonyms = make_synonyms(text=obj['title'])
-            mean = sum(min(mixed_distance(q, s) for s in synonyms) for q in queries) / (len(queries))
+            synonyms, weights = make_synonyms(text=obj['title'])
+            mean = sum(smoothmax([mixed_distance(q, s) for s in synonyms], weights) for q in queries) / (len(queries))
             scores[d] = codes[d[0]] - mean - (len(synonyms) - 1) * synonym_penalty - geod * geo_penalty
         return [k for k, v in scores.most_common(10)]
 
@@ -151,12 +151,32 @@ RE_BRACKETS = re.compile('\\(.*?\\)')
 
 def make_synonyms(text):
     text = text.lower()
-    raw = {text.replace('(', '').replace(')', '')}
+    raw = [text.replace('(', '').replace(')', '')]
+    weights = [1]
     for p in RE_BRACKETS.findall(text):
-        raw.add(p.replace('(', '').replace(')', '').replace('бывш.', ''))
-    raw.add(RE_BRACKETS.sub('', text))
-    raw = sorted({re.sub('\\s+', ' ', r).strip() for r in raw})
-    return raw
+        raw.append(p.replace('(', '').replace(')', '').replace('бывш.', ''))
+        weights.append(0.5)
+    s = RE_BRACKETS.sub('', text)
+    if s not in raw:
+        raw.append(s)
+        weights.append(0.9)
+    raw = [re.sub('\\s+', ' ', r).strip() for r in raw]
+    return raw, weights
+
+
+def smoothmax(args, weights=None, a=-2):
+    """ Smooth weighted max (for positive a) or min (for negative a) or mean """
+    num = 0
+    den = 0
+    for i, x in enumerate(args):
+        w = math.exp(x*a)
+        if weights is not None:
+            w *= weights[i]
+        num += w * x
+        den += w
+    if den:
+        return num / den
+    return 0.0
 
 
 def lcp(x, y):

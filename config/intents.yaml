@@ -14,6 +14,7 @@ suburb_ellipsis:
     - '{{ELLIPSIS}}{{TO_PRP}}(?P<to>{{_STATION_WIDE}})'
     - '{{ELLIPSIS}}(?P<fromto>{{_STATION_WIDE}})'
     - '{{ELLIPSIS}}{{_WHEN}}'
+    - '{{ELLIPSIS}}{{_BACK}}'
     - '{{ELLIPSIS}}{{FROM_PRP}}?(?P<from>{{_STATION}}) {{TO_PRP}}?(?P<to>{{_STATION}})?( {{_WHEN}})$'
 
 suburb_route:
@@ -24,3 +25,7 @@ suburb_route:
 confirm_purchase:
   regexp:
     - '((да|давай|купи|купить)\s)+'
+
+buy_back_and_forth:
+  regexp:
+    - '(купи )?(билет )?(туда и обратно|в обе стороны)'
