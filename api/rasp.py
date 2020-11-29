@@ -1,6 +1,7 @@
 import editdistance
 import logging
 import os
+import re
 import requests
 import statistics
 import time
@@ -75,6 +76,8 @@ def extract_all_objects(regions_list):
                 'longitude': longitude,
             })
             for station_id, station in enumerate(settlement['stations']):
+                if station['transport_type'] not in {'train', 'suburban'}:
+                    continue
                 if station['station_type'] in {'bus_stop'}:
                     # there are too many of bus stops, and they are generally useless for our purposes
                     continue
@@ -104,7 +107,7 @@ def prepare_the_world(stations_json, countries=None):
 
 
 class StationMatcher:
-    def __init__(self, world, prefix_size=3):
+    def __init__(self, world, prefix_size=4):
         self.world = world
         self.code2obj = {}
         for t, d in self.world.items():
@@ -113,17 +116,49 @@ class StationMatcher:
         self.prefixes = defaultdict(list)
         self.prefix_size = prefix_size
         for s in self.code2obj.values():
-            self.prefixes[s['title'][:prefix_size].lower()].append(s['yandex_code'])
+            for syn in make_synonyms(s['title']):
+                self.prefixes[syn[:prefix_size].lower()].append(s['yandex_code'])
 
-    def match(self, text, stations=0, regions=None, cities=0.9, lemmatize=True):
+    def match(self, text, stations=0, regions=None, cities=0.1, lemmatize=True, synonym_penalty=0.001):
         scores = Counter()
-        queries = {text.lower(), text.lower()[:-1], text.lower()[-2]}
+        queries = {text.lower(), text.lower()[:-1], text.lower()[:-2]}
         if lemmatize:
             queries.add(fast_normalize(text, lemmatize=True))
         codes = {'r': regions, 'c': cities, 's': stations}
         for d in self.prefixes[text.lower()[:self.prefix_size]]:
             if codes.get(d[0]) is None:
                 continue
-            scores[d] = codes[d[0]] \
-                        - sum(editdistance.eval(q, self.code2obj[d]['title']) for q in queries) / len(queries)
+            synonyms = make_synonyms(text=self.code2obj[d]['title'])
+            mean = sum(min(mixed_distance(q, s) for s in synonyms) for q in queries) / (len(queries))
+            scores[d] = codes[d[0]] - mean - (len(synonyms) - 1) * synonym_penalty
         return [k for k, v in scores.most_common(10)]
+
+
+RE_BRACKETS = re.compile('\\(.*?\\)')
+
+
+def make_synonyms(text):
+    text = text.lower()
+    raw = {text.replace('(', '').replace(')', '')}
+    for p in RE_BRACKETS.findall(text):
+        raw.add(p.replace('(', '').replace(')', ''))
+    raw.add(RE_BRACKETS.sub('', text))
+    raw = sorted({re.sub('\\s+', ' ', r).strip() for r in raw})
+    return raw
+
+
+def lcp(x, y):
+    if not x or not y:
+        return 0
+    n = min(len(x), len(y))
+    m = max(len(x), len(y))
+    denom = (m * n) ** 0.5
+    for i in range(n):
+        if x[i] != y[i]:
+            return i / denom
+    return n / denom
+
+
+def mixed_distance(w1, w2):
+    m = max(len(w1), len(w2))
+    return editdistance.eval(w1, w2) / m + (1 - lcp(w1, w2))

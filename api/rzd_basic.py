@@ -219,7 +219,7 @@ def format_route_list(routes_dict):
                         "from_tz": from_time_zone,
                         "to_tz": to_time_zone,
                         "duration": duration,
-                        "cost": cost
+                        "cost": int(cost)
                     })
 
         return result_trains
