@@ -1,6 +1,7 @@
 import logging
 import os
 import regex
+import time
 import tgalice
 from tgalice.cascade import Cascade
 from tgalice.dialog import Context
@@ -37,6 +38,7 @@ class RzdDialogManager(BaseDialogManager):
         logger.debug('the world loaded.')
 
     def respond(self, ctx: Context):
+        t0 = time.time()
         text, forms, intents = self.nlu(ctx)
         turn = RzdTurn(
             ctx=ctx,
@@ -51,8 +53,9 @@ class RzdDialogManager(BaseDialogManager):
         handler_name = self.cascade(turn)
         print(f"Handler name: {handler_name}")
         self.cascade.postprocess(turn)
-        print()
-        return turn.make_response()
+        resp = turn.make_response()
+        logger.debug(f'FULL RESPONSE TIME: {time.time() - t0}')
+        return resp
 
     def update_forms(self, forms, text):
         """В зависимости от предлога, найденного в тексте, исправляем сущности яндекса для слотов to и from."""

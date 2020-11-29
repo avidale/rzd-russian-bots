@@ -7,6 +7,8 @@ tf = TimezoneFinder()  # no, it is NOT tensorflow! (-:
 
 
 def convert_date_to_abs(dt, tz=None) -> Optional[datetime]:
+    if isinstance(dt, datetime):
+        return dt
     now = datetime.now(tz=tz).replace(minute=0, hour=0, second=0, microsecond=0)
     if isinstance(dt, dict):
         if dt.get('day_is_relative') and not dt.get('month'):

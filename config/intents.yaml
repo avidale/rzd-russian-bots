@@ -17,9 +17,9 @@ suburb_ellipsis:
     - '{{ELLIPSIS}}{{_BACK}}'
     - '{{ELLIPSIS}}{{FROM_PRP}}?(?P<from>{{_STATION}}) {{TO_PRP}}?(?P<to>{{_STATION}})?( {{_WHEN}})$'
 
-suburb_route:
+suburb_route_rx:
   regexp:
-    - '(найди )?(билеты? )?({{_SUBURBAN_PREFIX}} ){{FROM_PRP}}?(?P<from>{{_STATION}})?\s*{{TO_PRP}}?(?P<to>{{_STATION}})?( {{_WHEN}})?$'
+    - '(найди |покажи )?(билеты? )?({{_SUBURBAN_PREFIX}} ){{FROM_PRP}}?(?P<from>{{_STATION}})?\s*{{TO_PRP}}?(?P<to>{{_STATION}})?( {{_WHEN}})?$'
     #- '(найди )?(билеты? )?({{_SUBURBAN_PREFIX}} )?{{TO_PRP}}(?P<to>{{_STATION_WIDE}}){{FROM_PRP}}(?P<from>{{_STATION_WIDE}})( {{_WHEN}})?$'
 
 confirm_purchase:

@@ -44,9 +44,10 @@ class SuburbContext(Serializeable):
     bidirectional: bool = attr.ib(default=False)
 
 
-@csc.add_handler(priority=5, intents=['suburb_route'])
-@csc.add_handler(priority=20, intents=['suburb_route', 'suburb_ellipsis'], stages=['suburb_no_price'])
-@csc.add_handler(priority=30, intents=['suburb_route', 'suburb_ellipsis'],
+@csc.add_handler(priority=5, intents=['suburb_route', 'suburb_route_rx'])
+@csc.add_handler(priority=20, intents=['suburb_route', 'suburb_route_rx', 'suburb_ellipsis'],
+                 stages=['suburb_no_price'])
+@csc.add_handler(priority=30, intents=['suburb_route', 'suburb_route_rx', 'suburb_ellipsis'],
                  stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell', 'suburb_confirm_sell_final'])
 def suburb_route(turn: RzdTurn, force=False):
     form = turn.forms.get('suburb_route') or turn.forms.get('suburb_ellipsis')
@@ -70,8 +71,13 @@ def suburb_route(turn: RzdTurn, force=False):
     for k, v in form.items():
         if not isinstance(v, dict):  # skip yandex intents
             text2slots[v].add(k)
-    ft, fn = extract_slot_with_code('from', form, text2slots)
-    tt, tn = extract_slot_with_code('to', form, text2slots)
+    if 'suburb_route_rx' in turn.forms and 'suburb_route' not in turn.forms and 'suburb_ellipsis' not in turn.forms:
+        ft, fn = extract_slot_with_code('from', form, text2slots)
+        tt, tn = extract_slot_with_code('to', form, text2slots)
+    else:
+        # yandex fills these slots in a really weird way
+        ft, fn = form.get('from'), None
+        tt, tn = form.get('to'), None
 
     if ft or tt:  # on new search, we don't want to keep bidirectionality
         sub.bidirectional = False
@@ -120,6 +126,12 @@ def suburb_route(turn: RzdTurn, force=False):
     sub.date_txt = date.isoformat()
     logger.debug('now is {}, search date is {}'.format(now, date))
 
+    if sub.from_code and sub.to_code and sub.from_code == sub.to_code:
+        turn.response_text = f'Кажется точки отправления и назначения совпадают: {sub.from_text}. Попробуйте ещё раз.'
+        turn.user_object['suburb'] = sub.to_dict()
+        turn.suggests.append('электрички от тушино до красногорска')
+        return
+
     if sub.from_code and sub.to_code:
         if form.get('back'):
             logger.debug('turning the route backwards!')
@@ -132,7 +144,10 @@ def suburb_route(turn: RzdTurn, force=False):
             date=str(date)[:10],
         )
         if not result:
-            turn.response_text = f'Не удалось получить маршрут электричек от {sub.from_text} до {sub.to_text}'
+            turn.response_text = f'Не удалось получить маршрут электричек от {sub.from_text} до {sub.to_text}.' \
+                                 f' Поискать междугородные поезда? '
+            turn.suggests.append('да')
+            turn.stage = 'suggest_intercity_route_from_suburban'
             turn.user_object['suburb'] = sub.to_dict()
             return
         segments = result['segments']
@@ -140,13 +155,16 @@ def suburb_route(turn: RzdTurn, force=False):
         sub.from_norm = search['from']['title']
         sub.to_norm = search['to']['title']
 
-        cost = get_cppk_cost(from_text=sub.from_text, to_text=sub.to_text, date=None, return_price=True)
+        if segments:
+            cost = get_cppk_cost(from_text=sub.from_text, to_text=sub.to_text, date=None, return_price=True)
+        else:
+            cost = None
 
         turn.response_text = phrase_results(
             name_from=sub.from_norm,
             name_to=sub.to_norm,
             results=result,
-            only_next=(date == now),
+            only_next=(str(date)[:10] == str(now)[:10]),
             from_meta=turn.world.code2obj.get(sub.from_code),
             date=date,
             now=now,
@@ -157,8 +175,14 @@ def suburb_route(turn: RzdTurn, force=False):
             turn.stage = 'suburb_confirm_sell'
             turn.suggests.append('Да')
             turn.suggests.append('Туда и обратно')
+        elif not segments:
+            turn.response_text += ' Поискать междугородные поезда?'
+            turn.suggests.append('да')
+            turn.stage = 'suggest_intercity_route_from_suburban'
         else:
             turn.stage = 'suburb_no_price'
+        turn.suggests.append('А обратно?')
+        turn.suggests.append('А завтра?')
     elif not tn:
         turn.response_text = 'Куда вы хотите поехать' + (f' от станции {ft}' if ft else '') + '?'
         turn.stage = 'suburb_get_to'
@@ -169,6 +193,18 @@ def suburb_route(turn: RzdTurn, force=False):
         turn.response_text = 'Это какая-то невозможная ветка диалога'
 
     turn.user_object['suburb'] = sub.to_dict()
+
+
+@csc.add_handler(priority=40, stages=['suggest_intercity_route_from_suburban'], intents=['yes'])
+def switch_to_intercity(turn: RzdTurn):
+    sub = SuburbContext.from_dict(turn.user_object.get('suburb') or {})
+    form = {
+        'from': sub.from_norm or sub.from_text,
+        'to': sub.to_norm or sub.to_text,
+        'when': datetime.fromisoformat(sub.date_txt) if sub.date_txt else None,
+    }
+    from bot.handlers.route import intercity_route
+    intercity_route(turn=turn, form=form)
 
 
 @csc.add_handler(priority=100, intents=['yes', 'confirm_purchase'], stages=['suburb_confirm_sell'])

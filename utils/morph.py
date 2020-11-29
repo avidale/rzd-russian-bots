@@ -46,3 +46,18 @@ def convert_geo_to_normalized_city(geo_entity) -> Optional[str]:
         if len(parts) > 1 and parts[0] in preps:
             parts = parts[1:]
         return ' '.join(parts)
+
+
+def inflect_case(text, case):
+    if PYMORPHY:
+        res = []
+        for word in text.split():
+            parses = PYMORPHY.parse(word)
+            word_infl = None
+            if parses:
+                inflected = parses[0].inflect({case})
+                if inflected:
+                    word_infl = inflected.word
+            res.append(word_infl or word)
+        return ' '.join(res)
+    return text
