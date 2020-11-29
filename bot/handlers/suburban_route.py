@@ -1,3 +1,6 @@
+from datetime import datetime
+from pytz import timezone
+
 import attr
 import logging
 
@@ -10,7 +13,7 @@ from tgalice.utils.serialization import Serializeable
 from api.cppk import get_cppk_cost
 from bot.nlg.suburban import phrase_results
 from bot.turn import csc, RzdTurn
-
+from utils.date_convertor import convert_date_to_abs, local_now
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,7 @@ class SuburbContext(Serializeable):
 
 
 @csc.add_handler(priority=5, intents=['suburb_route'])
+@csc.add_handler(priority=20, intents=['suburb_route', 'suburb_ellipsis'], stages=['suburb_no_price'])
 @csc.add_handler(priority=30, intents=['suburb_route', 'suburb_ellipsis'],
                  stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell'])
 def suburb_route(turn: RzdTurn, force=False):
@@ -59,7 +63,8 @@ def suburb_route(turn: RzdTurn, force=False):
 
     text2slots = defaultdict(set)
     for k, v in form.items():
-        text2slots[v].add(k)
+        if not isinstance(v, dict):  # skip yandex intents
+            text2slots[v].add(k)
     ft, fn = extract_slot_with_code('from', form, text2slots)
     tt, tn = extract_slot_with_code('to', form, text2slots)
 
@@ -87,8 +92,32 @@ def suburb_route(turn: RzdTurn, force=False):
         sub.to_text = tt
         sub.to_code = tn
 
+    anchor = None
+    if sub.from_code:
+        anchor = turn.world.code2obj[sub.from_code]
+    elif sub.to_code:
+        anchor = turn.world.code2obj[sub.to_code]
+    if anchor:
+        now = local_now(lat=anchor['latitude'], lon=anchor['longitude'])
+    else:
+        now = datetime.now(tz=timezone('Europe/Moscow'))
+
+    date = None
+    if form.get('when'):
+        date = convert_date_to_abs(form['when'])
+    if not date and sub.date_txt:
+        date = datetime.fromisoformat(sub.date_txt)
+    if not date:
+        date = now
+    sub.date_txt = date.isoformat()
+    logger.debug('now is {}, search date is {}'.format(now, date))
+
     if sub.from_code and sub.to_code:
-        result = turn.rasp_api.suburban_trains_between(code_from=sub.from_code, code_to=sub.to_code)
+        result = turn.rasp_api.suburban_trains_between(
+            code_from=sub.from_code,
+            code_to=sub.to_code,
+            date=str(date)[:10],
+        )
         if not result:
             turn.response_text = f'Не удалось получить маршрут электричек от {sub.from_text} до {sub.to_text}'
             turn.user_object['suburb'] = sub.to_dict()
@@ -104,8 +133,10 @@ def suburb_route(turn: RzdTurn, force=False):
             name_from=sub.from_text,
             name_to=sub.to_text,
             results=result,
-            only_next=True,
+            only_next=(date == now),
             from_meta=turn.world.code2obj.get(sub.from_code),
+            date=date,
+            now=now,
         )
         if cost and segments:
             sub.cost = cost
@@ -119,6 +150,8 @@ def suburb_route(turn: RzdTurn, force=False):
                 'to_text': to_norm,
                 'price': cost or 100,
             }
+        else:
+            turn.stage = 'suburb_no_price'
     elif not tn:
         turn.response_text = 'Куда вы хотите поехать' + (f' от станции {ft}' if ft else '') + '?'
         turn.stage = 'suburb_get_to'

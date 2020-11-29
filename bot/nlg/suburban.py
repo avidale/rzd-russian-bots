@@ -1,7 +1,7 @@
 from datetime import datetime
 from pytz import timezone
 
-from utils.date_convertor import local_now
+from utils.date_convertor import local_now, date2ru
 
 
 def human_readable_time(time_string):
@@ -16,16 +16,22 @@ def simplify_station(text):
     return text.strip()
 
 
-def phrase_results(results, name_from, name_to, only_next=True, from_meta=None):
-    if from_meta:
-        now = local_now(lat=from_meta['latitude'], lon=from_meta['longitude'])
-    else:
-        now = datetime.now(tz=timezone('Europe/Moscow'))
-    name_to, name_from = simplify_station(name_to), simplify_station(name_from)
+def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, date=None, now=None):
+    if not now:
+        if from_meta:
+            now = local_now(lat=from_meta['latitude'], lon=from_meta['longitude'])
+        else:
+            now = datetime.now(tz=timezone('Europe/Moscow'))
+        name_to, name_from = simplify_station(name_to), simplify_station(name_from)
     dnow = str(now)[:10]
     tnow = str(now)[11:20]
     print('now is {}'.format(tnow))
-    valid = results['segments']
+    if not date:
+        date_txt = 'сегодня'
+    elif str(date)[:10] == str(now)[:10]:
+        date_txt = 'сегодня'
+    else:
+        date_txt = date2ru(date)
     if only_next:
         valid = []
         for v in results['segments']:
@@ -42,7 +48,7 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None):
         pre = 'Сегодня все электрички от {} до {} ушли. Но вот какие были: в'.format(name_from, name_to)
         results_to_read = results['segments']
     else:
-        pre = 'Вот какие ближайшие электрички от {} до {} есть: в'.format(name_from, name_to)
+        pre = 'Вот какие электрички от {} до {} есть {}: в'.format(name_from, name_to, date_txt)
         results_to_read = valid
     times = [human_readable_time(r['departure']) for r in results_to_read]
     if len(times) == 0:
