@@ -55,9 +55,21 @@ def suggest_first_station(text):
         if lower_text.startswith(f"{prep} "):
             lower_text = lower_text.split(" ", maxsplit=1)[1]
             break
-    # TODO временный костыль c питером
-    if lower_text == 'питер':
-        lower_text = 'Санкт-Петербург'
+    # TODO временный костыль со старыми и народными названиями
+    locations_mapping = {
+        'питер': 'Санкт-Петербург',
+        'петер': 'Санкт-Петербург',
+        'питербург': 'Санкт-Петербург',
+        'петербург': 'Санкт-Петербург',
+        'ленинград': 'Санкт-Петербург',
+        'владик': 'Владивосток',
+        'чкалов': 'Оренбург',
+        'орен': 'Оренбург',
+        'ебург': 'Екатеринбург',
+        'куйбышев': 'Самара',
+    }
+    if lower_text in locations_mapping:
+        lower_text = locations_mapping[lower_text]
     stations = suggest_stations(lower_text)
     if stations:
         return stations[0][0]['c']
@@ -102,6 +114,11 @@ def filter_trains_by_time_tags(trains, time_tags):
         if train_tag and train_tag in time_tags:
             filtered_trains.append(train)
     return filtered_trains
+
+
+def filter_trains_by_rzd_car_type(trains: list, rzd_car_type: str):
+    """Фильтруем список предложений поездов по типу вагона."""
+    return [train for train in trains if train['seat_type'] == rzd_car_type]
 
 
 def time_tag_attribution(trains):
@@ -234,7 +251,7 @@ if __name__ == "__main__":
 
     vlad = suggest_first_station("Владивасток")
     irkutsk = suggest_first_station("Иркутск")
-    print(suggest_first_station("Владивасток"))
+    print(suggest_first_station("Владик"))
     print(suggest_first_station("Иркутск"))
     date_to = "01.12.2020"
     print(vlad, irkutsk)
@@ -247,5 +264,58 @@ if __name__ == "__main__":
     print(find_route(orenburg, moscow, date_to, format_result=True))
 
 
+def car_type_to_rzd_type(car_type):
+    """Перевод типа вагона из грамматики в тип вагона в RZD API."""
+    mapping = {
+        "seating": "Сидячий",
+        "first_class": "СВ",
+        "econom": "Плацкартный",
+        "sleeping": "Купе",
+        "luxury": "Люкс"
+    }
+    return mapping[car_type]
 
 
+def create_suggestions_for_car_types(rzd_car_types):
+    """Формирования списка предложения по списку типов доступных поездов."""
+    suggestions = []
+    if "Купе" in rzd_car_types:
+        suggestions.append("Нижнее место в купе")
+    if "Плацкартный" in rzd_car_types:
+        suggestions.append("Верхнее место в плацкарте")
+    if "Сидячий" in rzd_car_types:
+        suggestions.append("Сидячее место")
+    if "СВ" in rzd_car_types:
+        suggestions.append("Св")
+    if "Люкс" in rzd_car_types:
+        suggestions.append("Люкс")
+    return suggestions
+
+
+def extract_min_max_prices_for_car_types(trains):
+    """Формирование словаря с минимальными ценами в зависимости от типа вагона.
+    Ключ - тип вагона, значение - вложенный словарь с ключами min и max, значения - соответственно
+    минимальная и максимальная цены на места данного типа."""
+    result = {}
+    for train in trains:
+        car_type = train["seat_type"]
+        cost = train["cost"]
+        if car_type in result:
+            if result[car_type]["min"] > cost:
+                result[car_type]["min"] = cost
+            elif result[car_type]["max"] < cost:
+                result[car_type]["max"] = cost
+        else:
+            result[car_type] = {"min": train["cost"], "max": train["cost"]}
+
+    print(f"Extracted min and max prices: {result}")
+    return result
+
+
+def extracted_prices_to_information_str(extracted_prices_dict):
+    """Формирование информационной строки с минимальными и максимальными ценами по каждому типу ввагонов
+    на основе словаря."""
+    result = ""
+    for rzd_car_type, costs in extracted_prices_dict.items():
+        result += f"{rzd_car_type}:   {costs['min']} - {costs['max']} руб.\n"
+    return result

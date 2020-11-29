@@ -1,0 +1,14 @@
+root:
+    $WeakSeatType
+
+slots:
+    seat_type:
+        type: SeatType
+        source: $WeakSeatType
+
+filler:
+ алиса
+ $YANDEX.NONSENSE
+
+$WeakSeatType:
+    $SeatType
