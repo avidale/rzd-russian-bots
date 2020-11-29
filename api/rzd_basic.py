@@ -319,3 +319,31 @@ def extracted_prices_to_information_str(extracted_prices_dict):
     for rzd_car_type, costs in extracted_prices_dict.items():
         result += f"{rzd_car_type}:   {costs['min']} - {costs['max']} руб.\n"
     return result
+
+
+def get_min_max_costs(trains):
+    """Получение минимальной и максимальной цены."""
+    min_cost = max_cost = None
+
+    for train in trains:
+        cost = train['cost']
+        if min_cost is None or cost < min_cost:
+            min_cost = cost
+        if max_cost is None or cost > max_cost:
+            max_cost = cost
+
+    return min_cost, max_cost
+
+
+def get_min_and_max_departure_time(trains):
+    """Получение минимального и макимального локального времени отправления."""
+    min_time = max_time = None
+
+    for train in trains:
+        dep_time = train["time_start"].split(" ")[1]
+        if min_time is None or dep_time < min_time:
+            min_time = dep_time
+        if max_time is None or dep_time > max_time:
+            max_time = dep_time
+
+    return min_time, max_time
