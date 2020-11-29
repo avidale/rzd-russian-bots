@@ -44,9 +44,10 @@ class SuburbContext(Serializeable):
     bidirectional: bool = attr.ib(default=False)
 
 
-@csc.add_handler(priority=5, intents=['suburb_route'])
-@csc.add_handler(priority=20, intents=['suburb_route', 'suburb_ellipsis'], stages=['suburb_no_price'])
-@csc.add_handler(priority=30, intents=['suburb_route', 'suburb_ellipsis'],
+@csc.add_handler(priority=5, intents=['suburb_route', 'suburb_route_rx'])
+@csc.add_handler(priority=20, intents=['suburb_route', 'suburb_route_rx', 'suburb_ellipsis'],
+                 stages=['suburb_no_price'])
+@csc.add_handler(priority=30, intents=['suburb_route', 'suburb_route_rx', 'suburb_ellipsis'],
                  stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell', 'suburb_confirm_sell_final'])
 def suburb_route(turn: RzdTurn, force=False):
     form = turn.forms.get('suburb_route') or turn.forms.get('suburb_ellipsis')
@@ -70,8 +71,13 @@ def suburb_route(turn: RzdTurn, force=False):
     for k, v in form.items():
         if not isinstance(v, dict):  # skip yandex intents
             text2slots[v].add(k)
-    ft, fn = extract_slot_with_code('from', form, text2slots)
-    tt, tn = extract_slot_with_code('to', form, text2slots)
+    if 'suburb_route_rx' in turn.forms and 'suburb_route' not in turn.forms and 'suburb_ellipsis' not in turn.forms:
+        ft, fn = extract_slot_with_code('from', form, text2slots)
+        tt, tn = extract_slot_with_code('to', form, text2slots)
+    else:
+        # yandex fills these slots in a really weird way
+        ft, fn = form.get('from'), None
+        tt, tn = form.get('from'), None
 
     if ft or tt:  # on new search, we don't want to keep bidirectionality
         sub.bidirectional = False

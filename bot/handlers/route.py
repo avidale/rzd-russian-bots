@@ -5,7 +5,7 @@ from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_t
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.human_converters import get_human_readable_existing_car_types, car_type_to_human_str, seat_type_to_human_str
-from utils.morph import convert_geo_to_normalized_city
+from utils.morph import convert_geo_to_normalized_city, inflect_case
 
 from tgalice.dialog import Response
 from tgalice.nlg.controls import BigImage
@@ -32,19 +32,19 @@ def check_slots_and_chose_state(turn: RzdTurn):
         # На данном этапе полностью получены все слоты
         turn.suggests.extend(['Да', 'Нет'])
 
-    elif from_text and to_text:
+    elif from_text and to_text and not when_text:
         turn.response_text = f'Когда поедем по маршруту {from_text} - {to_text}?'
         next_stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
 
-    elif from_text and when_text:
-        turn.response_text = f'Куда поедем'
-        next_stage = 'expect_destination_place'
-        turn.suggests.extend(['Петербург', 'Казань'])
-
-    elif to_text and when_text:
-        turn.response_text = f'Откуда поедем?'
+    elif to_text and not from_text:
+        turn.response_text = f'Откуда поедем до {inflect_case(to_text, "gent")}?'
         next_stage = 'expect_departure_place'
+        turn.suggests.extend(['Москва', 'Петербург'])
+
+    elif from_text and not to_text:
+        turn.response_text = f'Куда поедем из {inflect_case(from_text, "gent")}?'
+        next_stage = 'expect_destination_place'
         turn.suggests.extend(['Москва', 'Петербург'])
 
     else:
@@ -174,7 +174,6 @@ def intercity_route(turn: RzdTurn):
     if when_text:
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
-    print(f"intercity_route turn: {turn.user_object['from_text']}")
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
 
