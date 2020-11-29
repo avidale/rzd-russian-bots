@@ -60,7 +60,9 @@ def suburb_route(turn: RzdTurn, force=False):
         return
     if not suburb_stage \
             and not form.get('suburb') \
-            and 'intercity_route' in turn.forms and not force:
+            and ('intercity_route' in turn.forms
+                 or (turn.stage or '').startswith('expect') and 'slots_filling' in turn.forms) \
+            and not force:
         # we give higher priority to intercity_route if we are out of suburb-specific context
         return
 
