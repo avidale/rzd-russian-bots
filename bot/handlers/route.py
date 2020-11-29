@@ -6,6 +6,8 @@ from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.morph import with_number
 
+from tgalice.dialog import Response
+from tgalice.nlg.controls import BigImage
 
 def filter_trains_by_rzd_car_type(trains: list, rzd_car_type: str):
     """Фильтруем список предложений поездов по типу вагона."""
@@ -400,6 +402,7 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
             turn.stage = "expect_car_type"
         else:
             selected_train = filtered_trains[0]
+            turn.user_object["selected_train"] = selected_train
 
             response_str = f'Покупаем билет на поезд {selected_train["number"]} ' \
                            f'{selected_train["from"]} {selected_train["to"]} на {selected_train["time_start"]} ' \
@@ -414,6 +417,7 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
             turn.response_text = response_str
             turn.stage = 'expect_after_selecting_train_slots_filled'
             turn.suggests.extend(['Да', 'Нет'])
+
             # Заполнили вторую часть
 
     if not car_type:
@@ -512,6 +516,33 @@ def expect_seat_type(turn: RzdTurn):
         turn.user_object['seat_type'] = seat_type
         turn = expect_slots_and_choose_state_for_selecting_train(turn)
         print(f"turn.response_text: {turn.response_text}")
+
+
+@csc.add_handler(priority=30, stages=['expect_after_selecting_train_slots_filled'], intents=['yes', 'no'])
+def expect_after_selecting_train_slots_filled(turn: RzdTurn):
+    print("expect_after_selecting_train_slots_filled handler")
+    print(f"intents: {turn.intents}")
+
+    # TODO разобраться и поправить с учетом адреса картинки
+    if 'yes' in turn.intents:
+        selected_train = turn.user_object["selected_train"]
+        cost = selected_train["cost"]
+        from_location = selected_train["from"]
+        to_location = selected_train["to"]
+        url = f'https://rzd-skill.herokuapp.com/qr/?f={from_location}&t={to_location}'
+        text = f'Отлично! Вы купили билет на поезд. С вашей карты будет списано {cost} руб.'
+        turn.response = Response(
+            image=BigImage(
+                image_id='213044/4e2dacacedfb7029f89e',
+                button_text='Скачать билет',
+                button_url=url,
+                description=text,
+            ),
+            text='',  # voice='*',
+            rich_text=text,
+        )
+    else:
+        turn.response_text = f'К сожалению, я ничего не нашла. Давайте попробуем заново'
 
 # @csc.add_handler(priority=6, stages=['expect_quantity'], intents=['tickets_quantity_slot_filling'])
 # def expect_quantity(turn: RzdTurn):
