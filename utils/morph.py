@@ -61,3 +61,14 @@ def inflect_case(text, case):
             res.append(word_infl or word)
         return ' '.join(res)
     return text
+
+
+def human_duration(minutes):
+    m = minutes % 60
+    h = minutes // 60
+    parts = []
+    if h:
+        parts.append(with_number('час', h))
+    if m or not h:
+        parts.append(with_number('минута', m))
+    return ' '.join(parts)

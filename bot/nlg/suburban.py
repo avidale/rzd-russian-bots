@@ -17,7 +17,7 @@ def simplify_station(text):
     return text.strip()
 
 
-def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, date=None, now=None):
+def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, date=None, now=None, dur_text=None):
     if not now:
         if from_meta:
             now = local_now(lat=from_meta['latitude'], lon=from_meta['longitude'])
@@ -73,4 +73,6 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
         else:
             pre += ' и в {}'.format(times[-1])
     pre = pre + '.'
+    if len(results_to_read) > 0 and dur_text:
+        pre += f' Время в пути {dur_text}.'
     return pre

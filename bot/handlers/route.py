@@ -1,11 +1,12 @@
 from api.rzd_basic import suggest_first_station, init_find_route, request_find_route_result, \
     car_type_to_rzd_type, create_suggestions_for_car_types, extract_min_max_prices_for_car_types, \
-    extracted_prices_to_information_str
+    extracted_prices_to_information_str, get_min_max_costs, get_min_and_max_departure_time, SUGGESTION_TIME_MAPPING
 from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags, filter_trains_by_rzd_car_type
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.human_converters import get_human_readable_existing_car_types, car_type_to_human_str, seat_type_to_human_str
-from utils.morph import convert_geo_to_normalized_city, inflect_case
+
+from utils.morph import convert_geo_to_normalized_city, with_number, inflect_case
 
 from tgalice.dialog import Response
 from tgalice.nlg.controls import BigImage
@@ -119,20 +120,57 @@ def expect_after_slots_filled(turn: RzdTurn):
         print(f"Trains with time tags:\n{trains}")
         print(trains)
 
-        # Проверяем, что тегов больше одного. Уточняем время дня
-        if len(time_tags) > 1:
-            tag_names = [TIME_MAPPING[tag] for tag in time_tags]
-            time_tags_str = ", ".join(tag_names)
-            turn.response_text = f'Есть поезда на {time_tags_str}. Когда желаете отправиться?'
-            turn.stage = 'expect_departure_time_tag'
-            turn.suggests.extend(tag_names)
+        # Проверяем, если нет поездов
+        if not trains:
+            turn.response_text = f'К сожалению на выбранную дату нет поедов!'
+            turn.user_object["when_text"] = None
+            turn = check_slots_and_chose_state(turn)
+        # Случай одного поезда
+        elif len(trains) == 1:
+            form_car_type = turn.forms.get('car_type', None)
+            form_seat_type = turn.forms.get('seat_type', None)
+            train_car_type = trains[0]['seat_type']
+            turn.user_object['car_type'] = train_car_type
+            turn.stage = 'expect_seat_type'
+            # if train_car_type in ['Сидячий', 'СВ', 'Люкс']:
+            #     turn.user_object['seat_type'] = 'нет'
+            # else:
+            #     turn.stage = 'expect_seat_type'
+        # Случай нескольких поездов
         else:
-            # Не даем выбрать время, потому что выбора нет
-            extracted_prices = extract_min_max_prices_for_car_types(trains)
-            prices_information_str = extracted_prices_to_information_str(extracted_prices)
-            turn.response_text = f'Найдено несколько поездов. Какое место хотите?\n\n{prices_information_str}'
-            turn.stage = 'expect_all_train_data'
-            turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
+            n_trains = len(trains)
+            when_text = turn.user_object.get("when_text", None)
+            turn.response_text = f'Найдено {with_number("поезд", n_trains)} на {when_text}.\n'
+
+            min_cost, max_cost = get_min_max_costs(trains)
+            min_time, max_time = get_min_and_max_departure_time(trains)
+
+            if min_cost == max_cost:
+                turn.response_text += f'Все белеты стоимостью {min_cost} руб.\n'
+            else:
+                turn.response_text += f"Билеты стоимостью от {min_cost} до {max_cost} руб.\n"
+            if min_time == max_time:
+                turn.response_text += f"Все поезда уходят в одно время {min_time}.\n"
+            else:
+                turn.response_text += f"Поезда ходят с {min_time} до {max_time}.\n"
+
+            tag_names = [TIME_MAPPING[tag] for tag in time_tags]
+            suggestion_tag_names = [SUGGESTION_TIME_MAPPING[tag] for tag in time_tags]
+            time_tags_str = ", ".join(tag_names)
+
+            # Есть более одного выбора времени
+            if len(time_tags) > 1:
+                turn.response_text += f'\nЕсть поезда на {time_tags_str}. Когда желаете отправиться?'
+                turn.stage = 'expect_departure_time_tag'
+                turn.suggests.extend(suggestion_tag_names)
+            else:
+                # Проверяем, что тегов больше одног
+                # Не даем выбрать время, потому что выбора нет
+                extracted_prices = extract_min_max_prices_for_car_types(trains)
+                prices_information_str = extracted_prices_to_information_str(extracted_prices)
+                turn.response_text += f'\nКакое место хотите?\n\n{prices_information_str}'
+                turn.stage = 'expect_all_train_data'
+                turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
     else:
         turn.response_text = f'К сожалению, я ничего не нашла. Давайте попробуем заново'
 
