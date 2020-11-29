@@ -1,9 +1,9 @@
 root:
-    [$Route? $From $To $When?]
-    [$Route? ($WeakFrom $WeakTo) $When?]
-    [$Route $From? $To $When?]
-    [$Route $From $To? $When?]
-    [$Route? $From? $To? $When]
+    [$Route? $From $To ($When|на? $Near $Ticket?)?]
+    [$Route? ($WeakFrom $WeakTo) ($When|на? $Near $Ticket?)?]
+    [$Route $From? $To ($When|на? $Near $Ticket?)?]
+    [$Route $From $To? ($When|на? $Near $Ticket?)?]
+    [$Route? $From? $To? ($When|на? $Near $Ticket?)]
 
 slots:
     from:
@@ -15,11 +15,16 @@ slots:
     when:
         source: $WeakWhen
         type: YANDEX.DATETIME
+    near:
+        source: $Near
 
 filler:
     алиса
     $YANDEX.NONSENSE
 
+$Near:
+    %lemma
+    самый близкий | ближайший | следующий
 $From:
     %lemma
     $FromPrep? $WeakFrom

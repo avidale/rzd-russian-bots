@@ -17,9 +17,16 @@ def check_slots_and_chose_state(turn: RzdTurn):
     from_text = turn.user_object.get("from_text", None)
     to_text = turn.user_object.get("to_text", None)
     when_text = turn.user_object.get("when_text", None)
+    near_text = turn.user_object.get("near_text", None)
 
-    if from_text and to_text and when_text:
-        turn.response_text = f'Ищу билеты по маршруту {from_text} - {to_text} {when_text}. Все правильно?'
+    if from_text and to_text and (when_text or near_text):
+        if near_text:
+            audio = get_audio()
+            timer = audio["medium"]
+            turn.response_text = f'Ищу ближайшие билеты по маршруту {from_text} - {to_text}. {timer} ' \
+                                 f'Показать, что нашлось?'
+        else:
+            turn.response_text = f'Ищу билеты по маршруту {from_text} - {to_text} {when_text}. Все правильно?'
         next_stage = 'expect_after_slots_filled'
 
         from_id = turn.user_object.get('from_id', None)
@@ -32,7 +39,7 @@ def check_slots_and_chose_state(turn: RzdTurn):
         # На данном этапе полностью получены все слоты
         turn.suggests.extend(['Да', 'Нет'])
 
-    elif from_text and to_text and not when_text:
+    elif from_text and to_text and not (when_text or near_text):
         turn.response_text = f'Когда поедем по маршруту {from_text} - {to_text}?'
         next_stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
@@ -57,6 +64,15 @@ def check_slots_and_chose_state(turn: RzdTurn):
         turn.stage = next_stage
 
     return turn
+
+
+def get_audio():
+    return {
+        "medium": "<speaker audio='dialogs-upload/2f426cdd-0898-4e3b-ba9f-94418b00fcc1/"
+                  "e3fab96b-608e-4d57-8fde-681af2150e95.opus'>",
+        "long": "<speaker audio='dialogs-upload/2f426cdd-0898-4e3b-ba9f-94418b00fcc1/"
+                "4b124bb6-3731-4f24-a31c-7a1bde9c5c0b.opus'>"
+    }
 
 
 def get_trains(turn: RzdTurn):
@@ -161,8 +177,9 @@ def intercity_route(turn: RzdTurn, form=None):
     from_text = forms.get('from', None)
     to_text = forms.get('to', None)
     when_text = forms.get('when', None)
+    near_text = forms.get('near', None)
 
-    print(f"when_text: {when_text}")
+    print(f"near_text: {when_text}")
 
     if from_text:
         from_text = convert_geo_to_normalized_city(from_text)
@@ -174,6 +191,10 @@ def intercity_route(turn: RzdTurn, form=None):
         turn.user_object['to_id'] = suggest_first_station(to_text)
     if when_text:
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
+    if near_text:
+        # На всякий случай сохраняем в поле when_text сегодняшнюю дату
+        turn.user_object['when_text'] = date2ru(convert_date_to_abs('сегодня'))
+        turn.user_object['near_text'] = near_text
 
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
@@ -186,16 +207,23 @@ def expect_departure_time(turn: RzdTurn):
     # Должен быть заполнен интент slots_filing и слот when
     forms = turn.forms['slots_filling']
     when_text = forms.get('when', None)
+    near_text = forms.get("near", None)
 
-    if not when_text:
+    if not (when_text or near_text):
         # Во время дозаполнения слота времени мы не получили данный слот. Переспрашиваем ещё раз
         turn.response_text = 'Назовите дату, на которую хотите посмотреть билет'
         # Оставляем тот же стейт
         turn.stage = 'expect_departure_time'
-        turn.suggests.extend(['Завтра', 'Сегодня'])
-    else:
-        # Получили недостающий слот со временем. Заполняем данные=
+        turn.suggests.extend(['Завтра', 'Сегодня', 'Ближайшая'])
+    elif when_text:
+        # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
+        turn = check_slots_and_chose_state(turn)
+        print(f"turn.response_text: {turn.response_text}")
+    else:
+        turn.user_object['near_text'] = near_text
+        # На всякий случай сохраняем в поле when_text сегодняшнюю дату
+        turn.user_object['when_text'] = date2ru(convert_date_to_abs('сегодня'))
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
 
