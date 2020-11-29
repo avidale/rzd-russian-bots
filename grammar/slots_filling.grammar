@@ -1,13 +1,15 @@
 root:
-    $From
-    $To
-    $When
+    $Common? $From
+    $Common? $To
+    $Common? $When
 
 slots:
     from:
         source: $WeakFrom
+        type: YANDEX.GEO
     to:
         source: $WeakTo
+        type: YANDEX.GEO
     when:
         source: $WeakWhen
         type: YANDEX.DATETIME
@@ -16,6 +18,9 @@ filler:
     алиса
     $YANDEX.NONSENSE
 
+$Common:
+    %lemma
+    давай | хочу | лучше | [мне удобней] | [можно пожалуйста?] | поедем
 $From:
     %lemma
     $FromPrep? $WeakFrom
