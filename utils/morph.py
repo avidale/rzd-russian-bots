@@ -1,4 +1,5 @@
 from tgalice.nlu.basic_nlu import PYMORPHY
+from typing import Optional
 
 
 def with_number(noun, number):
@@ -31,3 +32,16 @@ def agree_with_number(noun, number):
             return noun + 'а'
         else:
             return noun + 'ов'
+
+
+def convert_geo_to_normalized_city(geo_entity) -> Optional[str]:
+    """Конвертируем гео сущность Яндекса в текстовое нормализованное имя города."""
+    if isinstance(geo_entity, dict):
+        return geo_entity.get('city', None)
+
+    elif isinstance(geo_entity, str):
+        # Если есть предлог то удаляем его
+        parts = geo_entity.split()
+        preps = ["в", "от", "из", "с", "до", "на", "к"]
+        filtered_parts = [part for part in parts if part not in preps]
+        return ' '.join(filtered_parts)

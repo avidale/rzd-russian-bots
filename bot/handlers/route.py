@@ -4,7 +4,7 @@ from api.rzd_basic import suggest_first_station, find_route, init_find_route, re
 from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
-from utils.morph import with_number
+from utils.morph import with_number, convert_geo_to_normalized_city
 
 
 def filter_trains_by_rzd_car_type(trains: list, rzd_car_type: str):
@@ -20,7 +20,7 @@ def check_slots_and_chose_state(turn: RzdTurn):
     when_text = turn.user_object.get("when_text", None)
 
     if from_text and to_text and when_text:
-        turn.response_text = f'Ищу билеты {from_text} {to_text} {when_text}. Все правильно?'
+        turn.response_text = f'Ищу билеты по маршруту {from_text} - {to_text} {when_text}. Все правильно?'
         next_stage = 'expect_after_slots_filled'
 
         from_id = turn.user_object.get('from_id', None)
@@ -34,17 +34,17 @@ def check_slots_and_chose_state(turn: RzdTurn):
         turn.suggests.extend(['Да', 'Нет'])
 
     elif from_text and to_text:
-        turn.response_text = f'Когда поедем {from_text} {to_text}?'
+        turn.response_text = f'Когда поедем по маршруту {from_text} - {to_text}?'
         next_stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
 
     elif from_text and when_text:
-        turn.response_text = f'Куда поедем {from_text} {when_text}?'
+        turn.response_text = f'Куда поедем'
         next_stage = 'expect_destination_place'
         turn.suggests.extend(['Петербург', 'Казань'])
 
     elif to_text and when_text:
-        turn.response_text = f'Откуда поедем {to_text} {when_text}?'
+        turn.response_text = f'Откуда поедем?'
         next_stage = 'expect_departure_place'
         turn.suggests.extend(['Москва', 'Петербург'])
 
@@ -154,10 +154,14 @@ def intercity_route(turn: RzdTurn):
     to_text = forms.get('to', None)
     when_text = forms.get('when', None)
 
+    print(f"when_text: {when_text}")
+
     if from_text:
+        from_text = convert_geo_to_normalized_city(from_text)
         turn.user_object['from_text'] = from_text
         turn.user_object['from_id'] = suggest_first_station(from_text)
     if to_text:
+        to_text = convert_geo_to_normalized_city(to_text)
         turn.user_object['to_text'] = to_text
         turn.user_object['to_id'] = suggest_first_station(to_text)
     if when_text:
@@ -205,7 +209,8 @@ def expect_destination_place(turn: RzdTurn):
         turn.stage = 'expect_destination_place'
         turn.suggests.extend(['Москва', 'Петербург'])
     else:
-        # Получили недостающий слот со временем. Заполняем данные
+        # Получили недостающий слот с местом назначения. Заполняем данные
+        to_text = convert_geo_to_normalized_city(to_text)
         turn.user_object['to_text'] = to_text
         turn.user_object['to_id'] = suggest_first_station(to_text)
         turn = check_slots_and_chose_state(turn)
@@ -228,7 +233,8 @@ def expect_departure_place(turn: RzdTurn):
         turn.stage = 'expect_departure_place'
         turn.suggests.extend(['Москва', 'Петербург'])
     else:
-        # Получили недостающий слот со временем. Заполняем данные
+        # Получили недостающий слот с местом отправления. Заполняем данные
+        from_text = convert_geo_to_normalized_city(from_text)
         turn.user_object['from_text'] = from_text
         turn.user_object['from_id'] = suggest_first_station(from_text)
         turn = check_slots_and_chose_state(turn)
