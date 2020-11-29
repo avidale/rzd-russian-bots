@@ -21,7 +21,7 @@ def cppk_suggester_brute_force(text, min_len=3, return_code=False):
             result = cppk_suggester(q)
         except Exception as e:
             logger.warning('Exception when calling cppk suggester: {}'.format(e))
-            continue
+            return
         if result:
             if return_code:
                 return result[0]['id']

@@ -2,6 +2,7 @@ from datetime import datetime
 from pytz import timezone
 
 from utils.date_convertor import local_now, date2ru
+from utils.morph import inflect_case
 
 
 def human_readable_time(time_string):
@@ -44,11 +45,12 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
                     valid.append(v)
     else:
         valid = results['segments']
+    between = f'от {inflect_case(name_from, "gent")} до {inflect_case(name_to, "gent")}'
     if len(valid) <= 0:
-        pre = 'Сегодня все электрички от {} до {} ушли. Но вот какие были: в'.format(name_from, name_to)
+        pre = f'Сегодня все электрички {between} ушли. Но вот какие были: в'
         results_to_read = results['segments']
     else:
-        pre = 'Вот какие электрички от {} до {} есть {}: в'.format(name_from, name_to, date_txt)
+        pre = f'Вот какие электрички {between} есть {date_txt}: в'
         results_to_read = valid
     times = [human_readable_time(r['departure']) for r in results_to_read]
     if len(times) == 0:

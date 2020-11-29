@@ -158,7 +158,7 @@ def suburb_route(turn: RzdTurn, force=False):
             name_from=sub.from_norm,
             name_to=sub.to_norm,
             results=result,
-            only_next=(date == now),
+            only_next=(str(date)[:10] == str(now)[:10]),
             from_meta=turn.world.code2obj.get(sub.from_code),
             date=date,
             now=now,
