@@ -23,7 +23,7 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
             now = local_now(lat=from_meta['latitude'], lon=from_meta['longitude'])
         else:
             now = datetime.now(tz=timezone('Europe/Moscow'))
-        name_to, name_from = simplify_station(name_to), simplify_station(name_from)
+    name_to, name_from = simplify_station(name_to), simplify_station(name_from)
     dnow = str(now)[:10]
     tnow = str(now)[11:20]
     print('now is {}'.format(tnow))
