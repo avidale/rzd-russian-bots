@@ -63,11 +63,20 @@ def suburb_route(turn: RzdTurn, force=False):
     ft, fn = extract_slot_with_code('from', form, text2slots)
     tt, tn = extract_slot_with_code('to', form, text2slots)
 
+    center = None
+    center_code = sub.from_code or sub.to_code or turn.last_yandex_code or 'c213'
+    if center_code:
+        c = turn.world.code2obj.get(center_code)
+        if c and c.get('latitude'):
+            center = c['latitude'], c['longitude']
+
     # matching stations or cities from Yandex queries
     if ft and not fn:
-        fn = (turn.world.match(ft) or [None])[0]
+        fn = (turn.world.match(ft, center=center) or [None])[0]
+        logger.debug('matched {} to {} '.format(ft, fn and turn.world.code2obj[fn]['title']))
     if tt and not tn:
-        tn = (turn.world.match(tt) or [None])[0]
+        tn = (turn.world.match(tt, center=center) or [None])[0]
+        logger.debug('matched {} to {} '.format(tt, tn and turn.world.code2obj[tn]['title']))
 
     logger.debug(f'{ft}  ({fn}) -> {tt} ({tn})')
 
@@ -80,6 +89,10 @@ def suburb_route(turn: RzdTurn, force=False):
 
     if sub.from_code and sub.to_code:
         result = turn.rasp_api.suburban_trains_between(code_from=sub.from_code, code_to=sub.to_code)
+        if not result:
+            turn.response_text = f'Не удалось получить маршрут электричек от {sub.from_text} до {sub.to_text}'
+            turn.user_object['suburb'] = sub.to_dict()
+            return
         segments = result['segments']
         search = result['search']
         from_norm = search['from']['title']

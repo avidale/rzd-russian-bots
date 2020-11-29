@@ -1,5 +1,6 @@
 import editdistance
 import logging
+import math
 import os
 import re
 import requests
@@ -119,7 +120,14 @@ class StationMatcher:
             for syn in make_synonyms(s['title']):
                 self.prefixes[syn[:prefix_size].lower()].append(s['yandex_code'])
 
-    def match(self, text, stations=0, regions=None, cities=0.1, lemmatize=True, synonym_penalty=0.001):
+    def match(
+            self,
+            text,
+            stations=0, regions=None, cities=0.1,
+            lemmatize=True,
+            synonym_penalty=0.001,
+            center=None, geo_penalty=1e-4,
+    ):
         scores = Counter()
         queries = {text.lower(), text.lower()[:-1], text.lower()[:-2]}
         if lemmatize:
@@ -128,9 +136,13 @@ class StationMatcher:
         for d in self.prefixes[text.lower()[:self.prefix_size]]:
             if codes.get(d[0]) is None:
                 continue
-            synonyms = make_synonyms(text=self.code2obj[d]['title'])
+            obj = self.code2obj[d]
+            geod = 0
+            if center and obj.get('latitude'):
+                geod = geo_distance(center, (obj['latitude'], obj['longitude']))
+            synonyms = make_synonyms(text=obj['title'])
             mean = sum(min(mixed_distance(q, s) for s in synonyms) for q in queries) / (len(queries))
-            scores[d] = codes[d[0]] - mean - (len(synonyms) - 1) * synonym_penalty
+            scores[d] = codes[d[0]] - mean - (len(synonyms) - 1) * synonym_penalty - geod * geo_penalty
         return [k for k, v in scores.most_common(10)]
 
 
@@ -141,7 +153,7 @@ def make_synonyms(text):
     text = text.lower()
     raw = {text.replace('(', '').replace(')', '')}
     for p in RE_BRACKETS.findall(text):
-        raw.add(p.replace('(', '').replace(')', ''))
+        raw.add(p.replace('(', '').replace(')', '').replace('бывш.', ''))
     raw.add(RE_BRACKETS.sub('', text))
     raw = sorted({re.sub('\\s+', ' ', r).strip() for r in raw})
     return raw
@@ -162,3 +174,18 @@ def lcp(x, y):
 def mixed_distance(w1, w2):
     m = max(len(w1), len(w2))
     return editdistance.eval(w1, w2) / m + (1 - lcp(w1, w2))
+
+
+def geo_distance(one, another):
+    lat1 = math.radians(one[0])
+    lon1 = math.radians(one[1])
+    lat2 = math.radians(another[0])
+    lon2 = math.radians(another[1])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    distance = 6373.0 * c  # approximate radius of earth in km
+    return distance

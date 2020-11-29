@@ -16,5 +16,6 @@ def redirect_any():
         f"<br>Если вы хотите поговорить об этом светлом будущем, напишите мне: " \
         f"<a href=""https://t.me/cointegrated"">@cointegrated</a>." \
         "<br>О том, кто я, можно почитать <a href=""http://daviddale.ru/"">тут</a>." \
+        "<br><br>C любовью, @cointegrated и команда Russian Bots"\
         f"</div>"
     return render_template_string(s)

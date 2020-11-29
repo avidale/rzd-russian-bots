@@ -11,6 +11,11 @@ class RzdTurn(DialogTurn):
     rasp_api: RaspSearcher = attr.ib(factory=RaspSearcher)
     world: StationMatcher = attr.ib(factory=StationMatcher)
 
+    @property
+    def last_yandex_code(self):
+        # todo: return the code of the last used suburb station
+        pass
+
 
 csc = Cascade()
 
