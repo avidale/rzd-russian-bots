@@ -1,17 +1,14 @@
-import tgalice
-
-from api.rzd_basic import suggest_first_station, find_route, init_find_route, request_find_route_result
-from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags
+from api.rzd_basic import suggest_first_station, init_find_route, request_find_route_result, \
+    car_type_to_rzd_type, create_suggestions_for_car_types, extract_min_max_prices_for_car_types, \
+    extracted_prices_to_information_str
+from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags, filter_trains_by_rzd_car_type
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
-from utils.morph import with_number, convert_geo_to_normalized_city
+from utils.human_converters import get_human_readable_existing_car_types, car_type_to_human_str, seat_type_to_human_str
+from utils.morph import convert_geo_to_normalized_city
 
 from tgalice.dialog import Response
 from tgalice.nlg.controls import BigImage
-
-def filter_trains_by_rzd_car_type(trains: list, rzd_car_type: str):
-    """Фильтруем список предложений поездов по типу вагона."""
-    return [train for train in trains if train['seat_type'] == rzd_car_type]
 
 
 def check_slots_and_chose_state(turn: RzdTurn):
@@ -251,140 +248,6 @@ def expect_departure_place(turn: RzdTurn):
         print(f"turn.response_text: {turn.response_text}")
 
 
-def get_human_readable_existing_car_types(trains: list):
-    """Получение списка человеко-читаемых типов вагонов."""
-    existing_car_types = set(train['seat_type'] for train in trains)
-    return [car_type.capitalize() for car_type in existing_car_types]
-
-
-def car_type_to_rzd_type(car_type):
-    """Перевод типа вагона из грамматики в тип вагона в RZD API."""
-    mapping = {
-        "seating": "Сидячий",
-        "first_class": "СВ",
-        "econom": "Плацкартный",
-        "sleeping": "Купе",
-        "luxury": "Люкс"
-    }
-    return mapping[car_type]
-
-
-def create_suggestions_for_car_types(rzd_car_types):
-    """Формирования списка предложения по списку типов доступных поездов."""
-    suggestions = []
-    if "Купе" in rzd_car_types:
-        suggestions.append("Нижнее место в купе")
-    if "Плацкартный" in rzd_car_types:
-        suggestions.append("Верхнее место в плацкарте")
-    if "Сидячий" in rzd_car_types:
-        suggestions.append("Сидячее место")
-    if "СВ" in rzd_car_types:
-        suggestions.append("Св")
-    if "Люкс" in rzd_car_types:
-        suggestions.append("Люкс")
-    return suggestions
-
-
-def extract_min_max_prices_for_car_types(trains):
-    """Формирование словаря с минимальными ценами в зависимости от типа вагона.
-    Ключ - тип вагона, значение - вложенный словарь с ключами min и max, значения - соответственно
-    минимальная и максимальная цены на места данного типа."""
-    result = {}
-    for train in trains:
-        car_type = train["seat_type"]
-        cost = train["cost"]
-        if car_type in result:
-            if result[car_type]["min"] > cost:
-                result[car_type]["min"] = cost
-            elif result[car_type]["max"] < cost:
-                result[car_type]["max"] = cost
-        else:
-            result[car_type] = {"min": train["cost"], "max": train["cost"]}
-
-    print(f"Extracted min and max prices: {result}")
-    return result
-
-
-def extracted_prices_to_information_str(extracted_prices_dict):
-    """Формирование информационной строки с минимальными и максимальными ценами по каждому типу ввагонов
-    на основе словаря."""
-    result = ""
-    for rzd_car_type, costs in extracted_prices_dict.items():
-        result += f"{rzd_car_type}:   {costs['min']} - {costs['max']} руб.\n"
-    return result
-
-
-def car_type_to_human_str(car_type: str, form=0):
-    """Перевод типа вагона в человеко-читаемый вид с учетом склонения."""
-    plural_mapping = {
-        "seating": "сидячие",
-        "first_class": "СВ",
-        "econom": "плацкартные",
-        "sleeping": "купейные",
-        "luxury": "люксовый"
-    }
-    plural_mapping2 = {
-        "seating": "сидячими",
-        "first_class": "СВ",
-        "econom": "плацкартными",
-        "sleeping": "купейными",
-        "luxury": "люксовыми"
-    }
-    plural_mapping3 = {
-        "seating": "сидячих",
-        "first_class": "СВ",
-        "econom": "плацкартных",
-        "sleeping": "купейных",
-        "luxury": "люксовых"
-    }
-
-    singular_mapping = {
-        "seating": "сидячий",
-        "first_class": "СВ",
-        "econom": "плацкартный",
-        "sleeping": "купейный",
-        "luxury": "люкс"
-    }
-    singular_mapping2 = {
-        "seating": "сидячем",
-        "first_class": "СВ",
-        "econom": "плацкартном",
-        "sleeping": "купейном",
-        "luxury": "люксовом"
-    }
-
-    if form == 1:
-        return plural_mapping[car_type]
-    elif form == 2:
-        return plural_mapping2[car_type]
-    elif form == 3:
-        return singular_mapping2[car_type]
-    elif form == 4:
-        return plural_mapping2[car_type]
-    return singular_mapping[car_type]
-
-
-def seat_type_to_human_str(seat_type: str, form=0):
-    """Перевод типа места в человеко-читаемый вид с учетом склонения."""
-    plural_mapping = {
-        "upper": "верхние",
-        "bottom": "нижние"
-    }
-    singular_mapping = {
-        "upper": "верхний",
-        "bottom": "нижний"
-    }
-    singular_mapping2 = {
-        "upper": "верхнее",
-        "bottom": "нижнее"
-    }
-    if form == 2:
-        return plural_mapping[seat_type]
-    elif form == 1:
-        return singular_mapping2[seat_type]
-    return singular_mapping[seat_type]
-
-
 def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
     """Второй этап. Заполнение слотов для выбора поезда."""
     print(f"usr_object: {turn.user_object}")
@@ -490,7 +353,7 @@ def expect_car_type(turn: RzdTurn):
         # Гооворим, что вагона заданного типа нет
         turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами ' \
                              f'на указанное время! ' \
-                             f'Выберем другой тип вагона? \n{prices_information_str}'
+                             f'Выберем другой тип вагона?\n\n{prices_information_str}'
         # Оставляем тот же стейт
         turn.stage = 'expect_car_type'
         turn.suggests.extend(get_human_readable_existing_car_types(trains))
