@@ -16,6 +16,10 @@ class RzdTurn(DialogTurn):
         # todo: return the code of the last used suburb station
         pass
 
+    @property
+    def bank_card(self):
+        return 'VISA <voice>на</voice><text>****</text>0378'
+
 
 csc = Cascade()
 

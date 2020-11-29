@@ -78,6 +78,10 @@ def get_cppk_cost(from_text, to_text, date=None, return_price=False):
         return
     prices = cppk_prices(from_code=from_code, to_code=to_code, date=date)
     logger.debug(f'Got CPPK price in {time.time() - t} seconds')
+    price_values = [p.get('cost') for p in prices if p.get('cost')]
+    minp = min(price_values, default=None)
+    maxp = max(price_values, default=None)
+    logger.debug(f'prices range from {minp} to {maxp}')
     if return_price and prices:
         return prices[0].get('cost')
     return prices

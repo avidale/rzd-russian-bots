@@ -33,18 +33,21 @@ def extract_slot_with_code(slot, form, inverse, prefix='s'):
 @attr.s
 class SuburbContext(Serializeable):
     from_text: str = attr.ib(default=None)
+    from_norm: str = attr.ib(default=None)
     from_code: str = attr.ib(default=None)
     to_text: str = attr.ib(default=None)
+    to_norm: str = attr.ib(default=None)
     to_code: str = attr.ib(default=None)
     date_txt: str = attr.ib(default=None)
     time_txt: str = attr.ib(default=None)
     cost: int = attr.ib(default=None)
+    bidirectional: bool = attr.ib(default=False)
 
 
 @csc.add_handler(priority=5, intents=['suburb_route'])
 @csc.add_handler(priority=20, intents=['suburb_route', 'suburb_ellipsis'], stages=['suburb_no_price'])
 @csc.add_handler(priority=30, intents=['suburb_route', 'suburb_ellipsis'],
-                 stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell'])
+                 stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell', 'suburb_confirm_sell_final'])
 def suburb_route(turn: RzdTurn, force=False):
     form = turn.forms.get('suburb_route') or turn.forms.get('suburb_ellipsis')
     # найди электрички от сколково до беговой turns to
@@ -67,6 +70,9 @@ def suburb_route(turn: RzdTurn, force=False):
             text2slots[v].add(k)
     ft, fn = extract_slot_with_code('from', form, text2slots)
     tt, tn = extract_slot_with_code('to', form, text2slots)
+
+    if ft or tt:  # on new search, we don't want to keep bidirectionality
+        sub.bidirectional = False
 
     center = None
     center_code = sub.from_code or sub.to_code or turn.last_yandex_code or 'c213'
@@ -129,14 +135,14 @@ def suburb_route(turn: RzdTurn, force=False):
             return
         segments = result['segments']
         search = result['search']
-        from_norm = search['from']['title']
-        to_norm = search['to']['title']
+        sub.from_norm = search['from']['title']
+        sub.to_norm = search['to']['title']
 
         cost = get_cppk_cost(from_text=sub.from_text, to_text=sub.to_text, date=None, return_price=True)
 
         turn.response_text = phrase_results(
-            name_from=sub.from_text,
-            name_to=sub.to_text,
+            name_from=sub.from_norm,
+            name_to=sub.to_norm,
             results=result,
             only_next=(date == now),
             from_meta=turn.world.code2obj.get(sub.from_code),
@@ -145,16 +151,10 @@ def suburb_route(turn: RzdTurn, force=False):
         )
         if cost and segments:
             sub.cost = cost
-            turn.response_text += f' Стоимость {cost} рублей. Желаете купить билет?'
+            turn.response_text += f' Стоимость {cost} рублей в одну сторону. Желаете купить билет?'
             turn.stage = 'suburb_confirm_sell'
             turn.suggests.append('Да')
             turn.suggests.append('Туда и обратно')
-
-            turn.user_object['suburb_transaction'] = {
-                'from_text': from_norm,
-                'to_text': to_norm,
-                'price': cost or 100,
-            }
         else:
             turn.stage = 'suburb_no_price'
     elif not tn:
@@ -170,12 +170,33 @@ def suburb_route(turn: RzdTurn, force=False):
 
 
 @csc.add_handler(priority=100, intents=['yes', 'confirm_purchase'], stages=['suburb_confirm_sell'])
+@csc.add_handler(priority=100, intents=['both_sides', 'one_side'],
+                 stages=['suburb_confirm_sell', 'suburb_confirm_sell_final'])
+def suburb_purchase_details(turn: RzdTurn):
+    sub = SuburbContext.from_dict(turn.user_object.get('suburb') or {})
+    if turn.intents.get('both_sides'):
+        sub.bidirectional = True
+    if turn.intents.get('one_side'):
+        sub.bidirectional = False
+    turn.response_text = f'Покупаю билет от станции {sub.from_norm} до станции {sub.to_norm}, '
+    if sub.bidirectional:
+        turn.response_text += 'в обе стороны, '
+    turn.response_text += f' с вашей карты {turn.bank_card} спишется {sub.cost * (sub.bidirectional + 1)} рублей. '
+    turn.response_text += 'Вы подтверждаете покупку?'
+    turn.suggests.append('Да')
+    turn.suggests.append('В одну сторону' if sub.bidirectional else 'В обе стороны')
+    turn.stage = 'suburb_confirm_sell_final'
+    turn.user_object['suburb'] = sub.to_dict()
+
+
+@csc.add_handler(priority=100, intents=['yes', 'confirm_purchase'], stages=['suburb_confirm_sell_final'])
 def suburb_confirm_purchase(turn: RzdTurn):
     # todo: fill
-    tran = turn.user_object['suburb_transaction']
-    p = int(tran["price"])
-    url = f'https://rzd-skill.herokuapp.com/qr/?f={tran["from_text"]}&t={tran["to_text"]}'
-    text = f'Отлично! Продаю вам билет на электричку. С вашей карты будет списано {p} рублей.'
+    sub = SuburbContext.from_dict(turn.user_object.get('suburb') or {})
+    p = int(sub.cost) * (1 + sub.bidirectional)
+    url = f'https://rzd-skill.herokuapp.com/qr/?f={sub.from_norm}&t={sub.to_norm}'
+    text = f'Отлично! Я оформила вам билет на электричку. ' \
+           f'Вы можете распечатать его или приложить QR-код прямо к турникету.'
     turn.response = Response(
         image=BigImage(
             image_id='213044/4e2dacacedfb7029f89e',
@@ -187,3 +208,4 @@ def suburb_confirm_purchase(turn: RzdTurn):
         rich_text=text,
     )
     turn.stage = 'suburb_after_selling'
+    # todo: add post-sell suggests
