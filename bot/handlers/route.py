@@ -1,11 +1,12 @@
 from api.rzd_basic import suggest_first_station, init_find_route, request_find_route_result, \
     car_type_to_rzd_type, create_suggestions_for_car_types, extract_min_max_prices_for_car_types, \
-    extracted_prices_to_information_str
+    extracted_prices_to_information_str, get_min_max_costs, get_min_and_max_departure_time
 from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags, filter_trains_by_rzd_car_type
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.human_converters import get_human_readable_existing_car_types, car_type_to_human_str, seat_type_to_human_str
-from utils.morph import convert_geo_to_normalized_city, inflect_case
+
+from utils.morph import convert_geo_to_normalized_city, with_number, inflect_case
 
 from tgalice.dialog import Response
 from tgalice.nlg.controls import BigImage
@@ -18,8 +19,12 @@ def check_slots_and_chose_state(turn: RzdTurn):
     to_text = turn.user_object.get("to_text", None)
     when_text = turn.user_object.get("when_text", None)
 
+    print(f"check_slots_and_chose_state from_text: {from_text}")
+    print(f"check_slots_and_chose_state to_text: {to_text}")
+    print(f"check_slots_and_chose_state when_text: {when_text}")
+
     if from_text and to_text and when_text:
-        turn.response_text = f'Ищу билеты по маршруту {from_text} - {to_text} {when_text}. Все правильно?'
+        response_text = f'Ищу билеты по маршруту {from_text} - {to_text} {when_text}. Все правильно?'
         next_stage = 'expect_after_slots_filled'
 
         from_id = turn.user_object.get('from_id', None)
@@ -33,24 +38,33 @@ def check_slots_and_chose_state(turn: RzdTurn):
         turn.suggests.extend(['Да', 'Нет'])
 
     elif from_text and to_text and not when_text:
-        turn.response_text = f'Когда поедем по маршруту {from_text} - {to_text}?'
+        response_text = f'Когда поедем по маршруту {from_text} - {to_text}?'
         next_stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
 
     elif to_text and not from_text:
-        turn.response_text = f'Откуда поедем до {inflect_case(to_text, "gent")}?'
+        response_text = f'Откуда поедем до {inflect_case(to_text, "gent")}?'
         next_stage = 'expect_departure_place'
         turn.suggests.extend(['Москва', 'Петербург'])
 
     elif from_text and not to_text:
-        turn.response_text = f'Куда поедем из {inflect_case(from_text, "gent")}?'
+        response_text = f'Куда поедем из {inflect_case(from_text, "gent")}?'
         next_stage = 'expect_destination_place'
         turn.suggests.extend(['Москва', 'Петербург'])
 
     else:
-        turn.response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
-        next_stage = None
+        response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
+        # Либо пользователь скажет фразу целиком, либо как минимум станцию отправления
+        # Тут косяк с тем, что получается он говорит станцию назначения (косяк из-за грамматики)
+        next_stage = 'expect_departure_place'  # тут был None
         turn.suggests.extend(['Москва', 'Петербург'])
+
+    # Если в ответе уже было сообщение (сообщение об ошибке), то текущий ответ просто добавляем
+    # следующей строкой, иначе - заменяем
+    if turn.response_text:
+        turn.response_text += f'\n{response_text}'
+    else:
+        turn.response_text = response_text
 
     if next_stage:
         print(f"Next stage: {next_stage}")
@@ -65,6 +79,50 @@ def get_trains(turn: RzdTurn):
     cookies = turn.user_object.get('find_route_cookies', None)
 
     return request_find_route_result(params, cookies, format_result=True)
+
+
+def fill_from_location(turn: RzdTurn, from_text):
+    """Заполняем или ругаемся на станцию отправления."""
+    from_text = convert_geo_to_normalized_city(from_text)
+    turn.user_object['from_text'] = from_text
+
+    from_id = suggest_first_station(from_text)
+    if not from_id:
+        turn.user_object['from_text'] = None
+        turn.response_text = 'Станция отправления не найдена, попробуйте назвать еще раз!'
+        turn.suggests.extend(['Москва', 'Петербург'])
+    else:
+        to_id = turn.user_object.get('to_id', None)
+        if to_id is not None and to_id == from_id:
+            turn.user_object['from_text'] = None
+            turn.user_object['to_text'] = None
+            turn.user_object['from_id'] = None
+            turn.user_object['to_id'] = None
+            turn.response_text = 'Станции отправления и назначения совпадают!'
+        else:
+            turn.user_object['from_id'] = from_id
+
+
+def fill_to_location(turn: RzdTurn, to_text):
+    """Заполняем или ругаемся на станцию назначения."""
+    to_text = convert_geo_to_normalized_city(to_text)
+    turn.user_object['to_text'] = to_text
+
+    to_id = suggest_first_station(to_text)
+    if not to_id:
+        turn.user_object['to_text'] = None
+        turn.response_text = 'Станция назначения не найдена, попробуйте нвзвать еще раз!'
+        turn.suggests.extend(['Москва', 'Петербург'])
+    else:
+        from_id = turn.user_object.get('from_id', None)
+        if from_id is not None and to_id == from_id:
+            turn.user_object['from_text'] = None
+            turn.user_object['to_text'] = None
+            turn.user_object['from_id'] = None
+            turn.user_object['to_id'] = None
+            turn.response_text = 'Станции отправления и назначения совпадают!'
+        else:
+            turn.user_object['to_id'] = to_id
 
 
 @csc.add_handler(priority=30, stages=['expect_after_slots_filled'], intents=['yes', 'no'])
@@ -87,20 +145,56 @@ def expect_after_slots_filled(turn: RzdTurn):
         print(f"Trains with time tags:\n{trains}")
         print(trains)
 
-        # Проверяем, что тегов больше одного. Уточняем время дня
-        if len(time_tags) > 1:
+        # Проверяем, если нет поездов
+        if not trains:
+            turn.response_text = f'К сожалению на выбранную дату нет поедов!'
+            turn.user_object["when_text"] = None
+            turn = check_slots_and_chose_state(turn)
+        # Случай одного поезда
+        elif len(trains) == 1:
+            form_car_type = turn.forms.get('car_type', None)
+            form_seat_type = turn.forms.get('seat_type', None)
+            train_car_type = trains[0]['seat_type']
+            turn.user_object['car_type'] = train_car_type
+            turn.stage = 'expect_seat_type'
+            # if train_car_type in ['Сидячий', 'СВ', 'Люкс']:
+            #     turn.user_object['seat_type'] = 'нет'
+            # else:
+            #     turn.stage = 'expect_seat_type'
+        # Случай нескольких поездов
+        else:
+            n_trains = len(trains)
+            when_text = turn.user_object.get("when_text", None)
+            turn.response_text = f'Найдено {with_number("поезд", n_trains)} на {when_text}.\n'
+
+            min_cost, max_cost = get_min_max_costs(trains)
+            min_time, max_time = get_min_and_max_departure_time(trains)
+
+            if min_cost == max_cost:
+                turn.response_text += f'Все белеты стоимостью {min_cost} руб.\n'
+            else:
+                turn.response_text += f"Билеты стоимостью от {min_cost} до {max_cost} руб.\n"
+            if min_time == max_time:
+                turn.response_text += f"Все поезда уходят в одно время {min_time}.\n"
+            else:
+                turn.response_text += f"Поезда ходят с {min_time} до {max_time}.\n"
+
             tag_names = [TIME_MAPPING[tag] for tag in time_tags]
             time_tags_str = ", ".join(tag_names)
-            turn.response_text = f'Есть поезда на {time_tags_str}. Когда желаете отправиться?'
-            turn.stage = 'expect_departure_time_tag'
-            turn.suggests.extend(tag_names)
-        else:
-            # Не даем выбрать время, потому что выбора нет
-            extracted_prices = extract_min_max_prices_for_car_types(trains)
-            prices_information_str = extracted_prices_to_information_str(extracted_prices)
-            turn.response_text = f'Найдено несколько поездов. Какое место хотите?\n\n{prices_information_str}'
-            turn.stage = 'expect_all_train_data'
-            turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
+
+            # Есть более одного выбора времени
+            if len(time_tags) > 1:
+                turn.response_text += f'Есть поезда на {time_tags_str}. Когда желаете отправиться?'
+                turn.stage = 'expect_departure_time_tag'
+                turn.suggests.extend(tag_names)
+            else:
+                # Проверяем, что тегов больше одног
+                # Не даем выбрать время, потому что выбора нет
+                extracted_prices = extract_min_max_prices_for_car_types(trains)
+                prices_information_str = extracted_prices_to_information_str(extracted_prices)
+                turn.response_text += f'Какое место хотите?\n\n{prices_information_str}'
+                turn.stage = 'expect_all_train_data'
+                turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
     else:
         turn.response_text = f'К сожалению, я ничего не нашла. Давайте попробуем заново'
 
@@ -165,16 +259,13 @@ def intercity_route(turn: RzdTurn, form=None):
     print(f"when_text: {when_text}")
 
     if from_text:
-        from_text = convert_geo_to_normalized_city(from_text)
-        turn.user_object['from_text'] = from_text
-        turn.user_object['from_id'] = suggest_first_station(from_text)
+        fill_from_location(turn, from_text)
     if to_text:
-        to_text = convert_geo_to_normalized_city(to_text)
-        turn.user_object['to_text'] = to_text
-        turn.user_object['to_id'] = suggest_first_station(to_text)
+        fill_to_location(turn, to_text)
     if when_text:
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
+    print(f"intercity_route user_objects: {turn.user_object}")
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
 
@@ -217,9 +308,7 @@ def expect_destination_place(turn: RzdTurn):
         turn.suggests.extend(['Москва', 'Петербург'])
     else:
         # Получили недостающий слот с местом назначения. Заполняем данные
-        to_text = convert_geo_to_normalized_city(to_text)
-        turn.user_object['to_text'] = to_text
-        turn.user_object['to_id'] = suggest_first_station(to_text)
+        fill_to_location(turn, to_text)
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
 
@@ -241,9 +330,7 @@ def expect_departure_place(turn: RzdTurn):
         turn.suggests.extend(['Москва', 'Петербург'])
     else:
         # Получили недостающий слот с местом отправления. Заполняем данные
-        from_text = convert_geo_to_normalized_city(from_text)
-        turn.user_object['from_text'] = from_text
-        turn.user_object['from_id'] = suggest_first_station(from_text)
+        fill_from_location(turn, from_text)
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
 
