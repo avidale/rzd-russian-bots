@@ -44,3 +44,5 @@ def help_handler(turn: RzdTurn):
 def fallback(turn: RzdTurn):
     turn.response_text = 'Простите, я вас не понимаю.'
     turn.suggests.append('Помощь')
+    turn.suggests.append('билет москва - ярославль')
+    turn.suggests.append('электрички от беговой до сколково')

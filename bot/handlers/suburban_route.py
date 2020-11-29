@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pytz import timezone
 
@@ -156,7 +157,7 @@ def suburb_route(turn: RzdTurn, force=False):
         sub.from_norm = search['from']['title']
         sub.to_norm = search['to']['title']
 
-        if segments:
+        if segments and os.getenv('USE_CPPK_PRICES'):
             cost = get_cppk_cost(from_text=sub.from_text, to_text=sub.to_text, date=None, return_price=True)
         else:
             cost = None
