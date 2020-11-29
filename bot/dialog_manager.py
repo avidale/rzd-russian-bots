@@ -54,12 +54,44 @@ class RzdDialogManager(BaseDialogManager):
         print()
         return turn.make_response()
 
+    def update_forms(self, forms, text):
+        """В зависимости от предлога, найденного в тексте, исправляем сущности яндекса для слотов to и from."""
+        from_preps = ["от", "из", "с"]
+        to_preps = ["в", "до", "на", "к"]
+        try:
+            updated_forms = forms
+            geo_intents = ["intercity_route", "slots_filling"]
+            for intent in forms:
+                if intent in geo_intents:
+                    # Если только одно гео определилось в интенте
+                    if ('to' in forms[intent] and 'from' not in forms[intent]) or \
+                            ('to' not in forms[intent] and 'from' in forms[intent]):
+                        par = 'to' if 'to' in forms[intent] else 'from'
+                        content = forms[intent][par]
+                        if any([p in to_preps for p in text.split()]):
+                            forms[intent]["to"] = content
+                            if "from" in forms[intent]:
+                                del forms[intent]["from"]
+                        elif any([p in from_preps for p in text.split()]):
+                            forms[intent]["from"] = content
+                            if "to" in forms[intent]:
+                                del forms[intent]["to"]
+        except Exception:
+            return forms
+        else:
+            return updated_forms
+
     def nlu(self, ctx):
         text = fast_normalize(ctx.message_text or '')
         forms = match_forms(text=text, intents=self.intents)
         if ctx.yandex:
             ya_forms = extract_yandex_forms(ctx.yandex)
             forms.update(ya_forms)
+
+        print(f"Extracted forms: {forms}")
+        forms = self.update_forms(forms, ctx.message_text)
+        print(f"Updated forms: {forms}")
+
         intents = {intent_name: 1 for intent_name in forms}
 
         if tgalice.nlu.basic_nlu.like_help(ctx.message_text):

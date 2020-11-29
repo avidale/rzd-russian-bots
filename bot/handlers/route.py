@@ -174,7 +174,6 @@ def intercity_route(turn: RzdTurn):
     if when_text:
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
 
-    print(f"intercity_route turn: {turn.user_object['from_text']}")
     turn = check_slots_and_chose_state(turn)
     print(f"turn.response_text: {turn.response_text}")
 
@@ -207,7 +206,7 @@ def expect_destination_place(turn: RzdTurn):
 
     # Должен быть заполнен интент slots_filing и слот to
     forms = turn.forms['slots_filling']
-    to_text = forms.get('to', None) or forms.get('place', None)
+    to_text = forms.get('to', None) or forms.get('place', None) or forms.get('from', None)
 
     if not to_text:
         # Во время дозаполнения слота места назначения мы не получили данный слот. Переспрашиваем ещё раз
@@ -231,7 +230,7 @@ def expect_departure_place(turn: RzdTurn):
 
     # Должен быть заполнен интент slots_filing и слот from
     forms = turn.forms['slots_filling']
-    from_text = forms.get('from', None) or forms.get('place', None)
+    from_text = forms.get('from', None) or forms.get('place', None) or forms.get('to', None)
 
     if not from_text:
         # Во время дозаполнения слота места отправления мы не получили данный слот. Переспрашиваем ещё раз
