@@ -6,6 +6,8 @@ import re
 
 from collections import Counter
 
+from utils.human_converters import car_type_to_human_str
+
 
 def suggest_stations(text, threshold=0.5, min_n=3, max_n=10, s_coef=1e-3, l_coef=1e-3, len_coef=-1e-5):
     """ Получение списка станций по префиксу названия.
@@ -82,6 +84,13 @@ TIME_MAPPING = {
     "morning": "утро",
     "afternoon": "день",
     "evening": "вечер"
+}
+
+SUGGESTION_TIME_MAPPING = {
+    "night": "ночью",
+    "morning": "утром",
+    "afternoon": "днем",
+    "evening": "вечером"
 }
 
 
@@ -242,38 +251,27 @@ def format_route_list(routes_dict):
         return result_trains
 
 
-if __name__ == "__main__":
-    moscow = suggest_first_station("Москва")
-    piter = suggest_first_station("Санкт-Петербург")
-    date_to = "01.12.2020"
-    print(moscow, piter)
-    print(find_route(moscow, piter, date_to, format_result=True))
+GRAMMAR_CAR_TYPE_TO_RZD_TYPE_MAPPING = {
+    "seating": "Сидячий",
+    "first_class": "СВ",
+    "econom": "Плацкартный",
+    "sleeping": "Купе",
+    "luxury": "Люкс"
+}
 
-    vlad = suggest_first_station("Владивасток")
-    irkutsk = suggest_first_station("Иркутск")
-    print(suggest_first_station("Владик"))
-    print(suggest_first_station("Иркутск"))
-    date_to = "01.12.2020"
-    print(vlad, irkutsk)
-    print(find_route(vlad, piter, irkutsk, format_result=True))
-
-    orenburg = suggest_first_station("Оренбург")
-    irkutsk = suggest_first_station("Иркутск")
-    date_to = "01.12.2020"
-    print(orenburg, moscow)
-    print(find_route(orenburg, moscow, date_to, format_result=True))
+RZD_CAR_TYPE_TO_GRAMMAR_TYPE_MAPPING = {
+    value: key for key, value in GRAMMAR_CAR_TYPE_TO_RZD_TYPE_MAPPING.items()
+}
 
 
 def car_type_to_rzd_type(car_type):
     """Перевод типа вагона из грамматики в тип вагона в RZD API."""
-    mapping = {
-        "seating": "Сидячий",
-        "first_class": "СВ",
-        "econom": "Плацкартный",
-        "sleeping": "Купе",
-        "luxury": "Люкс"
-    }
-    return mapping[car_type]
+    return GRAMMAR_CAR_TYPE_TO_RZD_TYPE_MAPPING[car_type]
+
+
+def rzd_car_type_to_grammar_type(car_type):
+    """Перевод типа вагона из формата RZD API в формат грамматики."""
+    return RZD_CAR_TYPE_TO_GRAMMAR_TYPE_MAPPING[car_type]
 
 
 def create_suggestions_for_car_types(rzd_car_types):
@@ -317,7 +315,9 @@ def extracted_prices_to_information_str(extracted_prices_dict):
     на основе словаря."""
     result = ""
     for rzd_car_type, costs in extracted_prices_dict.items():
-        result += f"{rzd_car_type}:   {costs['min']} - {costs['max']} руб.\n"
+        grammar_car_type = rzd_car_type_to_grammar_type(rzd_car_type)
+        result += f"{car_type_to_human_str(grammar_car_type, form=1).capitalize()} места " \
+                  f"от {costs['min']} до {costs['max']} руб.\n"
     return result
 
 
@@ -347,3 +347,32 @@ def get_min_and_max_departure_time(trains):
             max_time = dep_time
 
     return min_time, max_time
+
+
+if __name__ == "__main__":
+    kaliningrad = suggest_first_station("Калининград")
+    adler = suggest_first_station("Адлер")
+    date_to = "30.11.2020"
+    print(kaliningrad, adler)
+    print(find_route(kaliningrad, adler, date_to, format_result=False))
+
+    moscow = suggest_first_station("Москва")
+    piter = suggest_first_station("Санкт-Петербург")
+    date_to = "01.12.2020"
+    print(moscow, piter)
+    print(find_route(moscow, piter, date_to, format_result=True))
+
+    vlad = suggest_first_station("Владивасток")
+    irkutsk = suggest_first_station("Иркутск")
+    print(suggest_first_station("Владик"))
+    print(suggest_first_station("Иркутск"))
+    date_to = "01.12.2020"
+    print(vlad, irkutsk)
+    print(find_route(vlad, piter, irkutsk, format_result=True))
+
+    orenburg = suggest_first_station("Оренбург")
+    irkutsk = suggest_first_station("Иркутск")
+    date_to = "01.12.2020"
+    print(orenburg, moscow)
+    print(find_route(orenburg, moscow, date_to, format_result=True))
+
