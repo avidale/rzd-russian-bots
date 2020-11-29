@@ -4,6 +4,7 @@ import attr
 from tgalice.cascade import DialogTurn, Cascade
 
 from api.rasp import RaspSearcher, StationMatcher
+from utils.synsets import Synsets
 
 
 @attr.s
