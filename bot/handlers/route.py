@@ -6,6 +6,8 @@ from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.morph import with_number
 
+from tgalice.dialog import Response
+from tgalice.nlg.controls import BigImage
 
 def filter_trains_by_rzd_car_type(trains: list, rzd_car_type: str):
     """Фильтруем список предложений поездов по типу вагона."""
@@ -97,7 +99,9 @@ def expect_after_slots_filled(turn: RzdTurn):
             turn.suggests.extend(tag_names)
         else:
             # Не даем выбрать время, потому что выбора нет
-            turn.response_text = 'Найдено несколько поездов. Какое место хотите?'
+            extracted_prices = extract_min_max_prices_for_car_types(trains)
+            prices_information_str = extracted_prices_to_information_str(extracted_prices)
+            turn.response_text = f'Найдено несколько поездов. Какое место хотите?\n\n{prices_information_str}'
             turn.stage = 'expect_all_train_data'
             turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
     else:
@@ -118,9 +122,12 @@ def expect_departure_time_tag(turn: RzdTurn):
     print(f"Filtered trains by time tags: {filtered_trains}")
 
     if len(filtered_trains) == 0:
+        extracted_prices = extract_min_max_prices_for_car_types(source_trains)
+        prices_information_str = extracted_prices_to_information_str(extracted_prices)
+
         # Если на нужное время дня нет билетов то говорим об этом и предлагаем соазу выбирать тип вагона и места
-        turn.response_text = 'К сожалению, на выбранное время дня нет билетов. ' \
-                             'Давайте выберем место в найденных билетах?'
+        turn.response_text = f'К сожалению, на выбранное время дня нет билетов. ' \
+                             f'Давайте выберем место в найденных билетах?\n\n{prices_information_str}'
         turn.stage = 'expect_all_train_data'
 
         rzd_car_types = get_human_readable_existing_car_types(source_trains)
@@ -129,10 +136,13 @@ def expect_departure_time_tag(turn: RzdTurn):
         else:
             turn.suggests.extend(['Верхнее место в плацкарте', 'Нижнее место в купе'])
     else:
+        extracted_prices = extract_min_max_prices_for_car_types(filtered_trains)
+        prices_information_str = extracted_prices_to_information_str(extracted_prices)
+
         # Теперь в юзерстейте лежат отфильтрованные по времени билеты
         turn.user_object['trains'] = filtered_trains
         # Переходим к выбору типа вагона и мест
-        turn.response_text = 'Какое место хотите?'
+        turn.response_text = f'{prices_information_str}\nКакое место хотите?'
         turn.stage = 'expect_all_train_data'
 
         rzd_car_types = get_human_readable_existing_car_types(filtered_trains)
@@ -269,6 +279,35 @@ def create_suggestions_for_car_types(rzd_car_types):
     return suggestions
 
 
+def extract_min_max_prices_for_car_types(trains):
+    """Формирование словаря с минимальными ценами в зависимости от типа вагона.
+    Ключ - тип вагона, значение - вложенный словарь с ключами min и max, значения - соответственно
+    минимальная и максимальная цены на места данного типа."""
+    result = {}
+    for train in trains:
+        car_type = train["seat_type"]
+        cost = train["cost"]
+        if car_type in result:
+            if result[car_type]["min"] > cost:
+                result[car_type]["min"] = cost
+            elif result[car_type]["max"] < cost:
+                result[car_type]["max"] = cost
+        else:
+            result[car_type] = {"min": train["cost"], "max": train["cost"]}
+
+    print(f"Extracted min and max prices: {result}")
+    return result
+
+
+def extracted_prices_to_information_str(extracted_prices_dict):
+    """Формирование информационной строки с минимальными и максимальными ценами по каждому типу ввагонов
+    на основе словаря."""
+    result = ""
+    for rzd_car_type, costs in extracted_prices_dict.items():
+        result += f"{rzd_car_type}:   {costs['min']} - {costs['max']} руб.\n"
+    return result
+
+
 def car_type_to_human_str(car_type: str, form=0):
     """Перевод типа вагона в человеко-читаемый вид с учетом склонения."""
     plural_mapping = {
@@ -356,31 +395,35 @@ def expect_slots_and_choose_state_for_selecting_train(turn: RzdTurn):
         filtered_trains = filter_trains_by_rzd_car_type(trains, car_type_to_rzd_type(car_type))
         if not filtered_trains:
             turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами ' \
-                                 f'на указанное время. ' \
+                                 f'на указанное время.\n' \
                                  f'Давайте выберем вагон другого типа?'
             turn.suggests.extend(get_human_readable_existing_car_types(trains))
             turn.user_object["car_type"] = None
             turn.stage = "expect_car_type"
         else:
             selected_train = filtered_trains[0]
+            turn.user_object["selected_train"] = selected_train
 
             response_str = f'Покупаем билет на поезд {selected_train["number"]} ' \
                            f'{selected_train["from"]} {selected_train["to"]} на {selected_train["time_start"]} ' \
                            f'местного времени, '
             if car_type in ['econom', 'sleeping']:
                 response_str += f'{seat_type_to_human_str(seat_type, form=1)} место в ' \
-                                f'{car_type_to_human_str(car_type, form=3)} вагоне. ' \
-                                f'Все правильно?'
+                                f'{car_type_to_human_str(car_type, form=3)} вагоне. '
             else:
-                response_str += f'{car_type_to_human_str(car_type)} вагон. ' \
-                                f'Все правильно?'
+                response_str += f'{car_type_to_human_str(car_type)} вагон. '
+            response_str += f'\nЦена {selected_train["cost"]} руб.\nВсе правильно?'
+
             turn.response_text = response_str
             turn.stage = 'expect_after_selecting_train_slots_filled'
             turn.suggests.extend(['Да', 'Нет'])
+
             # Заполнили вторую часть
 
     if not car_type:
-        turn.response_text = f'Какой хотите тип вагона?'
+        extracted_prices = extract_min_max_prices_for_car_types(trains)
+        prices_information_str = extracted_prices_to_information_str(extracted_prices)
+        turn.response_text = f'{prices_information_str}\nКакой хотите тип вагона?'
         turn.stage = 'expect_car_type'
         turn.suggests.extend(get_human_readable_existing_car_types(trains))
     elif car_type in ['econom', 'sleeping'] and not seat_type:
@@ -422,9 +465,15 @@ def expect_car_type(turn: RzdTurn):
     car_type = forms.get('car_type', None)
     trains = turn.user_object.get("trains", None)
 
+    prices_information_str = ""
+    if trains:
+        extracted_prices = extract_min_max_prices_for_car_types(trains)
+        prices_information_str = extracted_prices_to_information_str(extracted_prices)
+
     if not car_type:
         # Переспрашиваем тип вагона
-        turn.response_text = 'Какой хотите тип вагона?'
+
+        turn.response_text = f'{prices_information_str}Какой хотите тип вагона?'
         # Оставляем тот же стейт
         turn.stage = 'expect_car_type'
         if trains:
@@ -435,7 +484,7 @@ def expect_car_type(turn: RzdTurn):
         # Гооворим, что вагона заданного типа нет
         turn.response_text = f'К сожалению нет поездов с {car_type_to_human_str(car_type, form=2)} вагонами ' \
                              f'на указанное время! ' \
-                             f'Выберем другой тип вагона?'
+                             f'Выберем другой тип вагона? \n{prices_information_str}'
         # Оставляем тот же стейт
         turn.stage = 'expect_car_type'
         turn.suggests.extend(get_human_readable_existing_car_types(trains))
@@ -467,6 +516,33 @@ def expect_seat_type(turn: RzdTurn):
         turn.user_object['seat_type'] = seat_type
         turn = expect_slots_and_choose_state_for_selecting_train(turn)
         print(f"turn.response_text: {turn.response_text}")
+
+
+@csc.add_handler(priority=30, stages=['expect_after_selecting_train_slots_filled'], intents=['yes', 'no'])
+def expect_after_selecting_train_slots_filled(turn: RzdTurn):
+    print("expect_after_selecting_train_slots_filled handler")
+    print(f"intents: {turn.intents}")
+
+    # TODO разобраться и поправить с учетом адреса картинки
+    if 'yes' in turn.intents:
+        selected_train = turn.user_object["selected_train"]
+        cost = selected_train["cost"]
+        from_location = selected_train["from"]
+        to_location = selected_train["to"]
+        url = f'https://rzd-skill.herokuapp.com/qr/?f={from_location}&t={to_location}'
+        text = f'Отлично! Вы купили билет на поезд. С вашей карты будет списано {cost} руб.'
+        turn.response = Response(
+            image=BigImage(
+                image_id='213044/4e2dacacedfb7029f89e',
+                button_text='Скачать билет',
+                button_url=url,
+                description=text,
+            ),
+            text='',  # voice='*',
+            rich_text=text,
+        )
+    else:
+        turn.response_text = f'К сожалению, я ничего не нашла. Давайте попробуем заново'
 
 # @csc.add_handler(priority=6, stages=['expect_quantity'], intents=['tickets_quantity_slot_filling'])
 # def expect_quantity(turn: RzdTurn):
