@@ -38,7 +38,7 @@ class SuburbContext(Serializeable):
     cost: int = attr.ib(default=None)
 
 
-@csc.add_handler(priority=10, intents=['suburb_route'])
+@csc.add_handler(priority=5, intents=['suburb_route'])
 @csc.add_handler(priority=30, intents=['suburb_route', 'suburb_ellipsis'],
                  stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell'])
 def suburb_route(turn: RzdTurn, force=False):
