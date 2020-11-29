@@ -150,10 +150,11 @@ def expect_departure_time_tag(turn: RzdTurn):
 
 
 @csc.add_handler(priority=10, intents=['intercity_route'])
-def intercity_route(turn: RzdTurn):
+def intercity_route(turn: RzdTurn, form=None):
+    # the argument "form" is used when switching from suburban scenario
     print(f"intercity_route handler intents: {turn.intents}")
-    print(f"intercity_route handler forms: {turn.forms['intercity_route']}")
-    forms = turn.forms['intercity_route']
+    forms = form or turn.forms['intercity_route']
+    print(f"intercity_route handler forms: {forms}")
     # from_text = turn.ctx.yandex.request.nlu.intents['route_from_to'].slots['from']
 
     # Может быть заполнено от 1 до 3х форм: from, to, when

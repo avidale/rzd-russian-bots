@@ -17,7 +17,11 @@ def cppk_suggester_brute_force(text, min_len=3, return_code=False):
     for i in range(len(text), min_len, -1):
         q = '*{}*'.format(text[:i])
         print(q)
-        result = cppk_suggester(q)
+        try:
+            result = cppk_suggester(q)
+        except Exception as e:
+            logger.warning('Exception when calling cppk suggester: {}'.format(e))
+            continue
         if result:
             if return_code:
                 return result[0]['id']

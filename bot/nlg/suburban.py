@@ -52,7 +52,7 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
         results_to_read = valid
     times = [human_readable_time(r['departure']) for r in results_to_read]
     if len(times) == 0:
-        return f'Никаких электричек от {name_from} до {name_to} не нашлось.'
+        return f'Никаких электричек от станции {name_from} до станции {name_to} не нашлось.'
     if len(times) == 1:
         pre = pre + ' {}'.format(times[0])
     else:

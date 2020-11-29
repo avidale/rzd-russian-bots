@@ -77,7 +77,7 @@ def suburb_route(turn: RzdTurn, force=False):
     else:
         # yandex fills these slots in a really weird way
         ft, fn = form.get('from'), None
-        tt, tn = form.get('from'), None
+        tt, tn = form.get('to'), None
 
     if ft or tt:  # on new search, we don't want to keep bidirectionality
         sub.bidirectional = False
@@ -138,7 +138,10 @@ def suburb_route(turn: RzdTurn, force=False):
             date=str(date)[:10],
         )
         if not result:
-            turn.response_text = f'Не удалось получить маршрут электричек от {sub.from_text} до {sub.to_text}'
+            turn.response_text = f'Не удалось получить маршрут электричек от {sub.from_text} до {sub.to_text}.' \
+                                 f' Поискать междугородные поезда? '
+            turn.suggests.append('да')
+            turn.stage = 'suggest_intercity_route_from_suburban'
             turn.user_object['suburb'] = sub.to_dict()
             return
         segments = result['segments']
@@ -146,7 +149,10 @@ def suburb_route(turn: RzdTurn, force=False):
         sub.from_norm = search['from']['title']
         sub.to_norm = search['to']['title']
 
-        cost = get_cppk_cost(from_text=sub.from_text, to_text=sub.to_text, date=None, return_price=True)
+        if segments:
+            cost = get_cppk_cost(from_text=sub.from_text, to_text=sub.to_text, date=None, return_price=True)
+        else:
+            cost = None
 
         turn.response_text = phrase_results(
             name_from=sub.from_norm,
@@ -163,6 +169,10 @@ def suburb_route(turn: RzdTurn, force=False):
             turn.stage = 'suburb_confirm_sell'
             turn.suggests.append('Да')
             turn.suggests.append('Туда и обратно')
+        elif not segments:
+            turn.response_text += ' Поискать междугородные поезда?'
+            turn.suggests.append('да')
+            turn.stage = 'suggest_intercity_route_from_suburban'
         else:
             turn.stage = 'suburb_no_price'
     elif not tn:
@@ -175,6 +185,18 @@ def suburb_route(turn: RzdTurn, force=False):
         turn.response_text = 'Это какая-то невозможная ветка диалога'
 
     turn.user_object['suburb'] = sub.to_dict()
+
+
+@csc.add_handler(priority=40, stages=['suggest_intercity_route_from_suburban'], intents=['yes'])
+def switch_to_intercity(turn: RzdTurn):
+    sub = SuburbContext.from_dict(turn.user_object.get('suburb') or {})
+    form = {
+        'from': sub.from_norm or sub.from_text,
+        'to': sub.to_norm or sub.to_text,
+        'when': datetime.fromisoformat(sub.date_txt) if sub.date_txt else None,
+    }
+    from bot.handlers.route import intercity_route
+    intercity_route(turn=turn, form=form)
 
 
 @csc.add_handler(priority=100, intents=['yes', 'confirm_purchase'], stages=['suburb_confirm_sell'])
