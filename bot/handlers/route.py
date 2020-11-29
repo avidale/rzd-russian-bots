@@ -1,6 +1,6 @@
 from api.rzd_basic import suggest_first_station, init_find_route, request_find_route_result, \
     car_type_to_rzd_type, create_suggestions_for_car_types, extract_min_max_prices_for_car_types, \
-    extracted_prices_to_information_str, get_min_max_costs, get_min_and_max_departure_time
+    extracted_prices_to_information_str, get_min_max_costs, get_min_and_max_departure_time, SUGGESTION_TIME_MAPPING
 from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_time_tags, filter_trains_by_rzd_car_type
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
@@ -180,19 +180,20 @@ def expect_after_slots_filled(turn: RzdTurn):
                 turn.response_text += f"Поезда ходят с {min_time} до {max_time}.\n"
 
             tag_names = [TIME_MAPPING[tag] for tag in time_tags]
+            suggestion_tag_names = [SUGGESTION_TIME_MAPPING[tag] for tag in time_tags]
             time_tags_str = ", ".join(tag_names)
 
             # Есть более одного выбора времени
             if len(time_tags) > 1:
-                turn.response_text += f'Есть поезда на {time_tags_str}. Когда желаете отправиться?'
+                turn.response_text += f'\nЕсть поезда на {time_tags_str}. Когда желаете отправиться?'
                 turn.stage = 'expect_departure_time_tag'
-                turn.suggests.extend(tag_names)
+                turn.suggests.extend(suggestion_tag_names)
             else:
                 # Проверяем, что тегов больше одног
                 # Не даем выбрать время, потому что выбора нет
                 extracted_prices = extract_min_max_prices_for_car_types(trains)
                 prices_information_str = extracted_prices_to_information_str(extracted_prices)
-                turn.response_text += f'Какое место хотите?\n\n{prices_information_str}'
+                turn.response_text += f'\nКакое место хотите?\n\n{prices_information_str}'
                 turn.stage = 'expect_all_train_data'
                 turn.suggests.extend(['Верхнее место в плацкартном вагоне', 'Нижнее место в купе'])
     else:
@@ -285,7 +286,7 @@ def expect_departure_time(turn: RzdTurn):
         turn.stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
     else:
-        # Получили недостающий слот со временем. Заполняем данные=
+        # Получили недостающий слот со временем. Заполняем данные
         turn.user_object['when_text'] = date2ru(convert_date_to_abs(when_text))
         turn = check_slots_and_chose_state(turn)
         print(f"turn.response_text: {turn.response_text}")
