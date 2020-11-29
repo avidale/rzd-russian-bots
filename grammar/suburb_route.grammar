@@ -6,9 +6,15 @@ root:
 
 slots:
     from:
-        source: $WeakFrom
+        source: $WeakFromRaw
     to:
-        source: $WeakTo
+        source: $WeakToRaw
+    from_code:
+        source: $WeakFromTyped
+        type: EStation
+    to_code:
+        source: $WeakToTyped
+        type: EStation
     when:
         source: $WeakWhen
         type: YANDEX.DATETIME
@@ -47,9 +53,17 @@ $WhenPrep:
     около
     после
 $WeakFrom:
-    $Station
+    $StationPrefix? $WeakFromRaw
 $WeakTo:
-    $Station
+    $StationPrefix? $WeakToRaw
+$WeakFromRaw:
+    ($StationName | $ECity | $WeakFromTyped)
+$WeakToRaw:
+    ($StationName | $ECity | $WeakFromTyped)
+$WeakFromTyped:
+    $EStation
+$WeakToTyped:
+    $EStation
 $WeakWhen:
     $Date
 $Date:
@@ -76,15 +90,15 @@ $Train:
 $Suburban:
     %lemma
     электричка
-$Station:
+$StationPrefix:
     %lemma
-    (платформа|станция)? $StationName
+    (платформа|станция)
 $StationName:
     %lemma
     сколково
     красногорск
     тушино
-    беговая
+    #беговая
     петушки
     москва
     тверь
@@ -92,9 +106,8 @@ $StationName:
     москва? курская
     люблино
     столовая
-    можайск
+    #можайск
     Тимирязевская
     Гончарово
-    $EStation
 $AsUsual:
     как (обычно|всегда)

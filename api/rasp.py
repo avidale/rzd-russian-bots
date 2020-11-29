@@ -11,6 +11,8 @@ from datetime import datetime
 
 from tgalice.nlu.basic_nlu import fast_normalize
 
+from utils.synsets import CITY_SYNONYMS
+
 logger = logging.getLogger(__name__)
 
 
@@ -161,6 +163,11 @@ def make_synonyms(text):
         raw.append(s)
         weights.append(0.9)
     raw = [re.sub('\\s+', ' ', r).strip() for r in raw]
+    for old_syn, old_w in zip(raw[:], weights[:]):
+        for new_syn in CITY_SYNONYMS.synonyms(old_syn):
+            if new_syn not in raw:
+                raw.append(new_syn)
+                weights.append(old_w * 0.8)
     return raw, weights
 
 

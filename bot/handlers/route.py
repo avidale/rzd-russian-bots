@@ -19,6 +19,13 @@ def check_slots_and_chose_state(turn: RzdTurn):
     when_text = turn.user_object.get("when_text", None)
     near_text = turn.user_object.get("near_text", None)
 
+    print(f"check_slots_and_chose_state from_text: {from_text}")
+    print(f"check_slots_and_chose_state to_text: {to_text}")
+    print(f"check_slots_and_chose_state when_text: {when_text}")
+    print(f"check_slots_and_chose_state near_text: {near_text}")
+
+    response_text = ""
+
     if from_text and to_text and (when_text or near_text):
         if near_text:
             audio = get_audio()
@@ -55,9 +62,18 @@ def check_slots_and_chose_state(turn: RzdTurn):
         turn.suggests.extend(['Москва', 'Петербург'])
 
     else:
-        turn.response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
-        next_stage = None
+        response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
+        # Либо пользователь скажет фразу целиком, либо как минимум станцию отправления
+        # Тут косяк с тем, что получается он говорит станцию назначения (косяк из-за грамматики)
+        next_stage = 'expect_departure_place'  # тут был None
         turn.suggests.extend(['Москва', 'Петербург'])
+
+    # Если в ответе уже было сообщение (сообщение об ошибке), то текущий ответ просто добавляем
+    # следующей строкой, иначе - заменяем
+    if turn.response_text:
+        turn.response_text += f'\n{response_text}'
+    else:
+        turn.response_text = response_text
 
     if next_stage:
         print(f"Next stage: {next_stage}")

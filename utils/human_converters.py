@@ -51,7 +51,7 @@ def car_type_to_human_str(car_type: str, form=0):
     elif form == 3:
         return singular_mapping2[car_type]
     elif form == 4:
-        return plural_mapping2[car_type]
+        return plural_mapping3[car_type]
     return singular_mapping[car_type]
 
 
