@@ -14,6 +14,7 @@ from api.cppk import get_cppk_cost
 from bot.nlg.suburban import phrase_results
 from bot.turn import csc, RzdTurn
 from utils.date_convertor import convert_date_to_abs, local_now
+from utils.morph import human_duration, with_number
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,24 @@ def suburb_route(turn: RzdTurn, force=False):
         else:
             cost = None
 
+        dur_text = None
+        dur_minute = None
+        durs = [r.get('duration') for r in segments if r.get('duration')]
+        if durs:
+            min_dur = int(min(durs) / 60)
+            max_dur = int(max(durs) / 60)
+            logger.debug(f'durations: min {min_dur} max {max_dur}')
+            if max_dur / min_dur < 1.1:
+                dur_text = f'{human_duration(max_dur)}'
+            elif min_dur < 60 and max_dur < 60:
+                dur_text = f'от {min_dur} до {human_duration(max_dur)}'
+            else:
+                dur_text = f'от {human_duration(min_dur)} до {human_duration(max_dur)}'
+            dur_minute = min_dur
+            if not cost:
+                # approximate cost by duration
+                cost = int(max(14.0, -10 + 2.25 * dur_minute))
+
         turn.response_text = phrase_results(
             name_from=sub.from_norm,
             name_to=sub.to_norm,
@@ -168,10 +187,11 @@ def suburb_route(turn: RzdTurn, force=False):
             from_meta=turn.world.code2obj.get(sub.from_code),
             date=date,
             now=now,
+            dur_text=dur_text,
         )
         if cost and segments:
             sub.cost = cost
-            turn.response_text += f' Стоимость {cost} рублей в одну сторону. Желаете купить билет?'
+            turn.response_text += f' Стоимость {with_number("рубль", cost)} в одну сторону. Желаете купить билет?'
             turn.stage = 'suburb_confirm_sell'
             turn.suggests.append('Да')
             turn.suggests.append('Туда и обратно')
@@ -219,7 +239,8 @@ def suburb_purchase_details(turn: RzdTurn):
     turn.response_text = f'Покупаю билет от станции {sub.from_norm} до станции {sub.to_norm}, '
     if sub.bidirectional:
         turn.response_text += 'в обе стороны, '
-    turn.response_text += f' с вашей карты {turn.bank_card} спишется {sub.cost * (sub.bidirectional + 1)} рублей. '
+    cost_text = with_number("рубль", sub.cost * (sub.bidirectional + 1))
+    turn.response_text += f' с вашей карты {turn.bank_card} спишется {cost_text}. '
     turn.response_text += 'Вы подтверждаете покупку?'
     turn.suggests.append('Да')
     turn.suggests.append('В одну сторону' if sub.bidirectional else 'В обе стороны')
