@@ -24,3 +24,5 @@ gunicorn main:app --threads=10 --workers=1
 ```
 python main.py --ngrok
 ```
+
+Сам навык пока приватный, но можно посмотреть видео его демо: https://youtu.be/sXpI5NkfzW4
