@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 
 from utils.date_convertor import local_now, date2ru
@@ -31,8 +31,14 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
         date_txt = 'сегодня'
     elif str(date)[:10] == str(now)[:10]:
         date_txt = 'сегодня'
+    elif str(date)[:10] == str(now+timedelta(days=1))[:10]:
+        date_txt = 'завтра'
+    elif str(date)[:10] == str(now+timedelta(days=2))[:10]:
+        date_txt = 'послезавтра'
     else:
         date_txt = date2ru(date)
+        if date_txt[-4:] == '2020':
+            date_txt = date_txt[:-5]
     if only_next:
         valid = []
         for v in results['segments']:

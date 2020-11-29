@@ -126,6 +126,12 @@ def suburb_route(turn: RzdTurn, force=False):
     sub.date_txt = date.isoformat()
     logger.debug('now is {}, search date is {}'.format(now, date))
 
+    if sub.from_code and sub.to_code and sub.from_code == sub.to_code:
+        turn.response_text = f'Кажется точки отправления и назначения совпадают: {sub.from_text}. Попробуйте ещё раз.'
+        turn.user_object['suburb'] = sub.to_dict()
+        turn.suggests.append('электрички от тушино до красногорска')
+        return
+
     if sub.from_code and sub.to_code:
         if form.get('back'):
             logger.debug('turning the route backwards!')
@@ -175,6 +181,8 @@ def suburb_route(turn: RzdTurn, force=False):
             turn.stage = 'suggest_intercity_route_from_suburban'
         else:
             turn.stage = 'suburb_no_price'
+        turn.suggests.append('А обратно?')
+        turn.suggests.append('А завтра?')
     elif not tn:
         turn.response_text = 'Куда вы хотите поехать' + (f' от станции {ft}' if ft else '') + '?'
         turn.stage = 'suburb_get_to'
