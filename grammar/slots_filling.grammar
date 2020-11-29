@@ -1,7 +1,8 @@
 root:
-    $Common? $From
-    $Common? $To
-    $Common? $When
+    [$Common? $From]
+    [$Common? $To]
+    [$Common? $When]
+    [$Common? (на? $Near $Ticket?)]
 
 slots:
     from:
@@ -13,6 +14,8 @@ slots:
     when:
         source: $WeakWhen
         type: YANDEX.DATETIME
+    near:
+        source: $Near
 
 filler:
     алиса
@@ -21,6 +24,9 @@ filler:
 $Common:
     %lemma
     давай | хочу | лучше | [мне удобней] | [можно пожалуйста?] | поедем
+$Near:
+    %lemma
+    самый близкий | ближайший | следующий
 $From:
     %lemma
     $FromPrep? $WeakFrom
@@ -54,3 +60,6 @@ $Poi:
 $Date:
     %lemma
     $YANDEX.DATETIME
+$Ticket:
+    %lemma
+    поезд | билет
