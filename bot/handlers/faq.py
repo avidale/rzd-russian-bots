@@ -21,7 +21,7 @@ def greeting_handler(turn: RzdTurn):
         if slot_name in turn.user_object:
             del turn.user_object[slot_name]
 
-    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поезд.' \
+    turn.response_text = 'Привет! Это навык РЖД. Здесь вы можете найти и заказать билеты на поезд. ' \
                          'Чтобы выйти из навыка, скажите "Хватит".'
     turn.suggests.append('Помощь')
     turn.suggests.append('билет москва - ярославль')

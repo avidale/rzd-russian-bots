@@ -8,8 +8,10 @@ root:
 slots:
     from:
         source: $WeakFrom
+        type: YANDEX.GEO
     to:
         source: $WeakTo
+        type: YANDEX.GEO
     when:
         source: $WeakWhen
         type: YANDEX.DATETIME
