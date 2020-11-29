@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 
 from utils.date_convertor import local_now, date2ru
+from utils.morph import inflect_case
 
 
 def human_readable_time(time_string):
@@ -30,8 +31,14 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
         date_txt = 'сегодня'
     elif str(date)[:10] == str(now)[:10]:
         date_txt = 'сегодня'
+    elif str(date)[:10] == str(now+timedelta(days=1))[:10]:
+        date_txt = 'завтра'
+    elif str(date)[:10] == str(now+timedelta(days=2))[:10]:
+        date_txt = 'послезавтра'
     else:
         date_txt = date2ru(date)
+        if date_txt[-4:] == '2020':
+            date_txt = date_txt[:-5]
     if only_next:
         valid = []
         for v in results['segments']:
@@ -44,15 +51,16 @@ def phrase_results(results, name_from, name_to, only_next=True, from_meta=None, 
                     valid.append(v)
     else:
         valid = results['segments']
+    between = f'от {inflect_case(name_from, "gent")} до {inflect_case(name_to, "gent")}'
     if len(valid) <= 0:
-        pre = 'Сегодня все электрички от {} до {} ушли. Но вот какие были: в'.format(name_from, name_to)
+        pre = f'Сегодня все электрички {between} ушли. Но вот какие были: в'
         results_to_read = results['segments']
     else:
-        pre = 'Вот какие электрички от {} до {} есть {}: в'.format(name_from, name_to, date_txt)
+        pre = f'Вот какие электрички {between} есть {date_txt}: в'
         results_to_read = valid
     times = [human_readable_time(r['departure']) for r in results_to_read]
     if len(times) == 0:
-        return f'Никаких электричек от {name_from} до {name_to} не нашлось.'
+        return f'Никаких электричек от станции {name_from} до станции {name_to} не нашлось.'
     if len(times) == 1:
         pre = pre + ' {}'.format(times[0])
     else:

@@ -5,7 +5,8 @@ from api.rzd_basic import time_tag_attribution, TIME_MAPPING, filter_trains_by_t
 from bot.turn import RzdTurn, csc
 from utils.date_convertor import convert_date_to_abs, date2ru
 from utils.human_converters import get_human_readable_existing_car_types, car_type_to_human_str, seat_type_to_human_str
-from utils.morph import convert_geo_to_normalized_city, with_number
+
+from utils.morph import convert_geo_to_normalized_city, with_number, inflect_case
 
 from tgalice.dialog import Response
 from tgalice.nlg.controls import BigImage
@@ -36,24 +37,25 @@ def check_slots_and_chose_state(turn: RzdTurn):
         # На данном этапе полностью получены все слоты
         turn.suggests.extend(['Да', 'Нет'])
 
-    elif from_text and to_text:
+    elif from_text and to_text and not when_text:
         response_text = f'Когда поедем по маршруту {from_text} - {to_text}?'
         next_stage = 'expect_departure_time'
         turn.suggests.extend(['Завтра', 'Сегодня'])
 
-    elif from_text and when_text:
-        response_text = f'Куда поедем'
-        next_stage = 'expect_destination_place'
-        turn.suggests.extend(['Петербург', 'Казань'])
-
-    elif to_text and when_text:
-        response_text = f'Откуда поедем?'
+    elif to_text and not from_text:
+        response_text = f'Откуда поедем до {inflect_case(to_text, "gent")}?'
         next_stage = 'expect_departure_place'
+        turn.suggests.extend(['Москва', 'Петербург'])
+
+    elif from_text and not to_text:
+        response_text = f'Куда поедем из {inflect_case(from_text, "gent")}?'
+        next_stage = 'expect_destination_place'
         turn.suggests.extend(['Москва', 'Петербург'])
 
     else:
         response_text = f'Давайте попробуем заново. Откуда и куда вы хотите билет?'
         # Либо пользователь скажет фразу целиком, либо как минимум станцию отправления
+        # Тут косяк с тем, что получается он говорит станцию назначения (косяк из-за грамматики)
         next_stage = 'expect_departure_place'  # тут был None
         turn.suggests.extend(['Москва', 'Петербург'])
 
@@ -242,10 +244,11 @@ def expect_departure_time_tag(turn: RzdTurn):
 
 
 @csc.add_handler(priority=10, intents=['intercity_route'])
-def intercity_route(turn: RzdTurn):
+def intercity_route(turn: RzdTurn, form=None):
+    # the argument "form" is used when switching from suburban scenario
     print(f"intercity_route handler intents: {turn.intents}")
-    print(f"intercity_route handler forms: {turn.forms['intercity_route']}")
-    forms = turn.forms['intercity_route']
+    forms = form or turn.forms['intercity_route']
+    print(f"intercity_route handler forms: {forms}")
     # from_text = turn.ctx.yandex.request.nlu.intents['route_from_to'].slots['from']
 
     # Может быть заполнено от 1 до 3х форм: from, to, when
@@ -295,7 +298,7 @@ def expect_destination_place(turn: RzdTurn):
 
     # Должен быть заполнен интент slots_filing и слот to
     forms = turn.forms['slots_filling']
-    to_text = forms.get('to', None) or forms.get('place', None)
+    to_text = forms.get('to', None) or forms.get('place', None) or forms.get('from', None)
 
     if not to_text:
         # Во время дозаполнения слота места назначения мы не получили данный слот. Переспрашиваем ещё раз
@@ -317,7 +320,7 @@ def expect_departure_place(turn: RzdTurn):
 
     # Должен быть заполнен интент slots_filing и слот from
     forms = turn.forms['slots_filling']
-    from_text = forms.get('from', None) or forms.get('place', None)
+    from_text = forms.get('from', None) or forms.get('place', None) or forms.get('to', None)
 
     if not from_text:
         # Во время дозаполнения слота места отправления мы не получили данный слот. Переспрашиваем ещё раз

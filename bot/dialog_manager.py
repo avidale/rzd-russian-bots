@@ -1,6 +1,7 @@
 import logging
 import os
 import regex
+import time
 import tgalice
 from tgalice.cascade import Cascade
 from tgalice.dialog import Context
@@ -37,6 +38,7 @@ class RzdDialogManager(BaseDialogManager):
         logger.debug('the world loaded.')
 
     def respond(self, ctx: Context):
+        t0 = time.time()
         text, forms, intents = self.nlu(ctx)
         turn = RzdTurn(
             ctx=ctx,
@@ -51,8 +53,36 @@ class RzdDialogManager(BaseDialogManager):
         handler_name = self.cascade(turn)
         print(f"Handler name: {handler_name}")
         self.cascade.postprocess(turn)
-        print()
-        return turn.make_response()
+        resp = turn.make_response()
+        logger.debug(f'FULL RESPONSE TIME: {time.time() - t0}')
+        return resp
+
+    def update_forms(self, forms, text):
+        """В зависимости от предлога, найденного в тексте, исправляем сущности яндекса для слотов to и from."""
+        from_preps = ["от", "из", "с"]
+        to_preps = ["в", "до", "на", "к"]
+        try:
+            updated_forms = forms
+            geo_intents = ["intercity_route", "slots_filling"]
+            for intent in forms:
+                if intent in geo_intents:
+                    # Если только одно гео определилось в интенте
+                    if ('to' in forms[intent] and 'from' not in forms[intent]) or \
+                            ('to' not in forms[intent] and 'from' in forms[intent]):
+                        par = 'to' if 'to' in forms[intent] else 'from'
+                        content = forms[intent][par]
+                        if any([p in to_preps for p in text.split()]):
+                            forms[intent]["to"] = content
+                            if "from" in forms[intent]:
+                                del forms[intent]["from"]
+                        elif any([p in from_preps for p in text.split()]):
+                            forms[intent]["from"] = content
+                            if "to" in forms[intent]:
+                                del forms[intent]["to"]
+        except Exception:
+            return forms
+        else:
+            return updated_forms
 
     def nlu(self, ctx):
         text = fast_normalize(ctx.message_text or '')
@@ -60,6 +90,11 @@ class RzdDialogManager(BaseDialogManager):
         if ctx.yandex:
             ya_forms = extract_yandex_forms(ctx.yandex)
             forms.update(ya_forms)
+
+        print(f"Extracted forms: {forms}")
+        forms = self.update_forms(forms, ctx.message_text)
+        print(f"Updated forms: {forms}")
+
         intents = {intent_name: 1 for intent_name in forms}
 
         if tgalice.nlu.basic_nlu.like_help(ctx.message_text):
