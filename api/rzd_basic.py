@@ -81,7 +81,7 @@ def get_time_of_day(time_str):
     Returns:
         str|None: Тег времени дня или None, если не подходит формат
     """
-    if not re.match(r"^\d{1,2}:\d{2}$", "01:30"):
+    if not re.match(r"^\d{1,2}:\d{2}$", time_str):
         return None
     hours = int(time_str.split(":")[0])
     if hours in range(0, 6):
