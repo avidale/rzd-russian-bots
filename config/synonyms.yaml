@@ -1,0 +1,62 @@
+c2:
+  canonical: Санкт-Петербург
+  synonyms:
+    - питер
+    - петербург
+    - ленинград
+    - петроград
+    - спб
+c75:
+  canonical: Владивосток
+  synonyms:
+    - Владик
+    - Влад
+c214:
+  canonical: Долгопрудный
+  synonyms:
+    - Долгопа
+c54:
+  canonical: Екатеринбург
+  synonyms:
+    - ебург
+    - е-бург
+    - екат
+c216:
+  canonical: Зеленоград
+  synonyms:
+    - Зелик
+c46:
+  canonical: Киров
+  synonyms:
+    - Вятка
+c213:
+  canonical: Москва
+  synonyms:
+    - Мск
+    - Default City
+c23:
+  canonical: Мурманск
+  synonyms:
+    - Мурик
+c23243:
+  canonical: Нижний Новгород
+  synonyms:
+    - Нижний
+    - Горький
+c65 :
+  canonical: Новосибирск
+  synonyms:
+    - Новосиб
+c45 :
+  canonical: Чебоксары
+  synonyms:
+    - Чебы
+c56 :
+  canonical: Челябинск
+  synonyms:
+    - Челяба
+c16 :
+  canonical: Ярославль
+  synonyms:
+    - Ярик
+
