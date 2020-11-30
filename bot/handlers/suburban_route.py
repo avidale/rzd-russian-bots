@@ -251,7 +251,6 @@ def suburb_purchase_details(turn: RzdTurn):
 
 @csc.add_handler(priority=100, intents=['yes', 'confirm_purchase'], stages=['suburb_confirm_sell_final'])
 def suburb_confirm_purchase(turn: RzdTurn):
-    # todo: fill
     sub = SuburbContext.from_dict(turn.user_object.get('suburb') or {})
     p = int(sub.cost) * (1 + sub.bidirectional)
     url = f'https://rzd-skill.herokuapp.com/qr/?f={sub.from_norm}&t={sub.to_norm}'
@@ -266,6 +265,8 @@ def suburb_confirm_purchase(turn: RzdTurn):
         ),
         text='',  # voice='*',
         rich_text=text,
+        links=[{'hide': True, 'text': 'Скачать билет', 'url': url}],
     )
+    turn.response.image_url = 'https://raw.githubusercontent.com/avidale/rzd-russian-bots/master/static/qr.png'
     turn.stage = 'suburb_after_selling'
     # todo: add post-sell suggests
