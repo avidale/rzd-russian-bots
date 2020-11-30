@@ -52,7 +52,7 @@ class SuburbContext(Serializeable):
 @csc.add_handler(priority=30, intents=['suburb_route', 'suburb_route_rx', 'suburb_ellipsis'],
                  stages=['suburb_get_from', 'suburb_get_to', 'suburb_confirm_sell', 'suburb_confirm_sell_final'])
 def suburb_route(turn: RzdTurn, force=False):
-    form = turn.forms.get('suburb_route') or turn.forms.get('suburb_ellipsis')
+    form = turn.forms.get('suburb_route') or turn.forms.get('suburb_route_rx') or turn.forms.get('suburb_ellipsis')
     # найди электрички от сколково до беговой turns to
     # {'suburb': 'электрички', 'from': 'беговой', 's9602218': 'сколково', 's9601666': 'беговой', 'to': 'сколково'}}
     sub = SuburbContext.from_dict(turn.user_object.get('suburb') or {})
